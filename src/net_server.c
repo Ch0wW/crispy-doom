@@ -2031,7 +2031,7 @@ void NET_SV_Shutdown(void)
 
         // Timed out?
 
-        if (I_GetTimeMS() - start_time > 5000)
+        if (I_GetTimeMS() - start_time > 3000)
         {
             running = false;
             fprintf(stderr, "SV: Timed out waiting for clients to disconnect.\n");

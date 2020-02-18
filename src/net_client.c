@@ -1108,7 +1108,7 @@ boolean NET_CL_Connect(net_addr_t *addr, net_connect_data_t *data)
         }
 
         // time out after 5 seconds
-        if (nowtime - start_time > 5000)
+        if (nowtime - start_time > 3000)
         {
             SetRejectReason("No response from server");
             break;
@@ -1184,7 +1184,7 @@ void NET_CL_Disconnect(void)
     while (client_connection.state != NET_CONN_STATE_DISCONNECTED
         && client_connection.state != NET_CONN_STATE_DISCONNECTED_SLEEP)
     {
-        if (I_GetTimeMS() - start_time > 5000)
+        if (I_GetTimeMS() - start_time > 2000)
         {
             // time out after 5 seconds
 
