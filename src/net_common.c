@@ -357,9 +357,9 @@ void NET_Conn_Run(net_connection_t *conn)
         // We are disconnected, waiting in case we need to send
         // a DISCONNECT_ACK to the server again.
 
-        if (nowtime - conn->last_send_time > 3000)
+        if (nowtime - conn->last_send_time > 2000)
         {
-            // Idle for 5 seconds, switch state
+            // Idle for 2 seconds, switch state
 
             conn->state = NET_CONN_STATE_DISCONNECTED;
             conn->disconnect_reason = NET_DISCONNECT_REMOTE;

@@ -1107,8 +1107,8 @@ boolean NET_CL_Connect(net_addr_t *addr, net_connect_data_t *data)
             last_send_time = nowtime;
         }
 
-        // time out after 5 seconds
-        if (nowtime - start_time > 3000)
+        // time out after 2 seconds
+        if (nowtime - start_time > 2000)
         {
             SetRejectReason("No response from server");
             break;
