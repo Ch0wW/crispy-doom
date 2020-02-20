@@ -554,7 +554,12 @@ void D_DoomLoop (void)
 
     I_SetWindowTitle(gamedescription);
     I_GraphicsCheckCommandLine();
-    I_SetGrabMouseCallback(D_GrabMouseCallback);
+
+	boolean mousecallback = M_CheckParm("-mousecallback") > 0;
+
+	if (mousecallback)
+		I_SetGrabMouseCallback(D_GrabMouseCallback);
+
     I_InitGraphics();
     EnableLoadingDisk();
 
