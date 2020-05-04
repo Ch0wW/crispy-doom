@@ -943,6 +943,24 @@ int HUD_GetCurrentKillCount()
         return totalfrags;
 }
 
+int HUD_GetCurrentItemsCount()
+{
+    int pnum, i;
+    int totalfrags;
+
+    totalfrags = 0;
+
+    if (crispy->automapstats < NEWWIDGETS_ALWAYS_ALL)
+        return plr->itemcount;
+
+    for (i = 0; i < MAXPLAYERS; i++)
+    {
+        totalfrags += players[i].itemcount;
+    }
+
+    return totalfrags;
+}
+
 int HUD_GetCurrentSecretsCount()
 {
     int pnum, i;
@@ -1076,7 +1094,7 @@ void HU_Ticker(void)
 	    HUlib_addCharToTextLine(&w_kills, *(s++));
 
 	M_snprintf(str, sizeof(str), "%sI %s%d/%d", cr_stat, crstr[CR_GRAY],
-	        plr->itemcount, totalitems);
+            HUD_GetCurrentItemsCount(), totalitems);
 	HUlib_clearTextLine(&w_items);
 	s = str;
 	while (*s)
