@@ -1786,6 +1786,7 @@ void G_DoCompleted (void)
     wminfo.maxitems = totalitems; 
     wminfo.maxsecret = totalsecret; 
     wminfo.maxfrags = 0; 
+    wminfo.addedfrags = addkills;
 
     // Set par time. Exceptions are added for purposes of
     // statcheck regression testing.

@@ -29,6 +29,8 @@
 
 #include "statdump.h"
 
+extern  int addkills;
+
 /* Par times for E1M1-E1M9. */
 static const int doom1_par_times[] =
 {
@@ -190,11 +192,34 @@ static void PrintFragsTable(FILE *stream, wbstartstruct_t *stats)
 {
     int x, y;
 
+    boolean bPrint;
+    bPrint = false;
+
+    return;
+
+    for (x = 0; x < MAXPLAYERS; ++x) {
+        if (!stats->plyr[x].in) {
+            continue;
+        }
+
+        if (stats->plyr[x].frags[x] > 0)
+        {
+            bPrint = true;
+        }
+    }
+
+    if (!bPrint)
+        return;
+
     fprintf(stream, "Frags:\n");
 
     /* Print header */
 
     fprintf(stream, "\t\t");
+
+
+
+
 
     for (x=0; x<MAXPLAYERS; ++x)
     {
@@ -270,6 +295,10 @@ static void PrintStats(FILE *stream, wbstartstruct_t *stats)
 {
     short leveltime, partime;
     int i;
+    int iTotalFrags = 0;
+    int iTotalSecrets = 0;
+    int iTotalItems = 0;
+
 
     PrintLevelName(stream, stats->epsd, stats->last);
     fprintf(stream, "\n");
@@ -280,17 +309,38 @@ static void PrintStats(FILE *stream, wbstartstruct_t *stats)
     fprintf(stream, " (par: %i:%02i)\n", partime / 60, partime % 60);
     fprintf(stream, "\n");
 
+
+
     for (i=0; i<MAXPLAYERS; ++i)
     {
         if (stats->plyr[i].in)
         {
             PrintPlayerStats(stream, stats, i);
+            iTotalFrags += stats->plyr[i].skills;
+            iTotalSecrets += stats->plyr[i].ssecret;
+            iTotalItems += stats->plyr[i].sitems;
         }
     }
 
     if (GetNumPlayers(stats) >= 2)
     {
+        fprintf(stream, "\n");
+        fprintf(stream, "\n");
+        fprintf(stream, "TOTAL Kills: ");
+        PrintPercentage(stream, (iTotalFrags+stats->addedfrags), stats->maxkills);
+        fprintf(stream, "\n");
+        
+        fprintf(stream, "TOTAL Items: ");
+        PrintPercentage(stream, iTotalItems, stats->maxitems);
+        fprintf(stream, "\n");
+
+        fprintf(stream, "TOTAL Secrets: ");
+        PrintPercentage(stream, iTotalSecrets, stats->maxsecret);
+        fprintf(stream, "\n");
+        fprintf(stream, "\n");
+
         PrintFragsTable(stream, stats);
+
     }
 
     fprintf(stream, "\n");

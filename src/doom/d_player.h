@@ -222,6 +222,7 @@ typedef struct
     int		maxitems;
     int		maxsecret;
     int		maxfrags;
+    int     addedfrags;
 
     // the par time
     int		partime;
