@@ -937,6 +937,9 @@ int HUD_GetCurrentKillCount()
     {
         totalfrags += players[i].killcount;
     }
+
+    totalfrags += addkills;
+
         return totalfrags;
 }
 

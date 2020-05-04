@@ -1089,6 +1089,8 @@ P_SetupLevel
     mapformat_t	crispy_mapformat;
 	
     totalkills = totalitems = totalsecret = wminfo.maxfrags = 0;
+    addkills = 0;
+
     // [crispy] count spawned monsters
     extrakills = 0;
     wminfo.partime = 180;

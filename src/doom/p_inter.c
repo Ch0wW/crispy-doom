@@ -733,11 +733,14 @@ P_KillMobj
 	if (target->player)
 	    source->player->frags[target->player-players]++;
     }
-    else if (!netgame && (target->flags & MF_COUNTKILL) )
+    else if ((target->flags & MF_COUNTKILL) )
     {
 	// count all monster deaths,
 	// even those caused by other monsters
-	players[0].killcount++;
+		if (!netgame)
+			players[0].killcount++;
+		else
+			addkills++;
     }
     
     if (target->player)

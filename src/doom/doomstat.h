@@ -172,6 +172,7 @@ extern  int	displayplayer;
 extern  int	totalkills;
 extern	int	totalitems;
 extern	int	totalsecret;
+extern  int addkills;
 extern	int	extrakills; // [crispy] count spawned monsters
 
 // Timer, for scores.
