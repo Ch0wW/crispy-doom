@@ -874,10 +874,10 @@ void HU_Drawer(void)
 	HUlib_drawTextLine(&w_coorda, false);
     }
 
-    if (plr->powers[pw_showfps])
-    {
+    /*if (plr->powers[pw_showfps])
+    {*/
 	HUlib_drawTextLine(&w_fps, false);
-    }
+    //}
 
     if (crispy->crosshair == CROSSHAIR_STATIC)
 	HU_DrawCrosshair();
@@ -1148,14 +1148,30 @@ void HU_Ticker(void)
 	    HUlib_addCharToTextLine(&w_coorda, *(s++));
     }
 
-    if (plr->powers[pw_showfps])
+    if (crispy->leveltime >= WIDGETS_ALWAYS || (automapactive && crispy->leveltime == WIDGETS_AUTOMAP))
+    {
+        const int time = (totalleveltimes + leveltime) / TICRATE;
+
+        if (time >= 3600)
+            M_snprintf(str, sizeof(str), "%s%02d:%02d:%02d", crstr[CR_GRAY],
+                time / 3600, (time % 3600) / 60, time % 60);
+        else
+            M_snprintf(str, sizeof(str), "%s%02d:%02d", crstr[CR_GRAY],
+                time / 60, time % 60);
+        HUlib_clearTextLine(&w_fps);
+        s = str;
+        while (*s)
+            HUlib_addCharToTextLine(&w_fps, *(s++));
+    }
+
+   /* if (plr->powers[pw_showfps])
     {
 	M_snprintf(str, sizeof(str), "%s%-4d %sFPS", crstr[CR_GRAY], crispy->fps, cr_stat2);
 	HUlib_clearTextLine(&w_fps);
 	s = str;
 	while (*s)
 	    HUlib_addCharToTextLine(&w_fps, *(s++));
-    }
+    }*/
 }
 
 #define QUEUESIZE		128
