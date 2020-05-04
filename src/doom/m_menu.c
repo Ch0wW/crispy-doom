@@ -1533,7 +1533,7 @@ static void M_DrawCrispness2(void)
 
     M_DrawCrispnessSeparator(crispness_sep_navigational, "Navigational");
     M_DrawCrispnessItem(crispness_extautomap, "Extended Automap colors", crispy->extautomap, true);
-    M_DrawCrispnessMultiItem(crispness_automapstats, "Show Level Stats", multiitem_widgets, crispy->automapstats, true);
+    M_DrawCrispnessMultiItem(crispness_automapstats, "Show Level Stats", multiitem_newwidgets, crispy->automapstats, true);
     M_DrawCrispnessMultiItem(crispness_leveltime, "Show Level Time", multiitem_widgets, crispy->leveltime, true);
     M_DrawCrispnessMultiItem(crispness_playercoords, "Show Player Coords", multiitem_widgets, crispy->playercoords, true);
     M_DrawCrispnessMultiItem(crispness_secretmessage, "Show Revealed Secrets", multiitem_secretmessage, crispy->secretmessage, true);

@@ -153,7 +153,7 @@ static void UpdateGUI(void)
             TXT_SetLabel(player_labels[i],
                          net_client_wait_data.player_names[i]);
             TXT_SetLabel(ip_labels[i],
-                         net_client_wait_data.player_addrs[i]);
+                         net_client_wait_data./*player_addrs*/player_names[i]);
         }
         else
         {

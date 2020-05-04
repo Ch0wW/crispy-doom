@@ -142,6 +142,14 @@ multiitem_t multiitem_widgets[NUM_WIDGETS] =
     {WIDGETS_ALWAYS, "always"},
 };
 
+multiitem_t multiitem_newwidgets[NUM_NEWWIDGETS] =
+{
+    {NEWWIDGETS_OFF, "never"},
+    {NEWWIDGETS_AUTOMAP, "in Automap"},
+    {NEWWIDGETS_ALWAYS, "always"},
+    {NEWWIDGETS_ALWAYS_ALL, "always (everyone)"},
+};
+
 extern void AM_ReInit (void);
 extern void EnableLoadingDisk (void);
 extern void P_SegLengths (boolean contrast_only);
@@ -168,7 +176,7 @@ void M_CrispyToggleAspectRatio(int choice)
 void M_CrispyToggleAutomapstats(int choice)
 {
     choice = 0;
-    crispy->automapstats = (crispy->automapstats + 1) % NUM_WIDGETS;
+    crispy->automapstats = (crispy->automapstats + 1) % NUM_NEWWIDGETS;
 }
 
 void M_CrispyToggleBobfactor(int choice)

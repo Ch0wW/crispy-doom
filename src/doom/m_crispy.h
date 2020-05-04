@@ -42,6 +42,7 @@ extern multiitem_t multiitem_sndchannels[4];
 extern multiitem_t multiitem_secretmessage[NUM_SECRETMESSAGE];
 extern multiitem_t multiitem_translucency[NUM_TRANSLUCENCY];
 extern multiitem_t multiitem_widgets[NUM_WIDGETS];
+extern multiitem_t multiitem_newwidgets[NUM_NEWWIDGETS];
 
 extern void M_CrispyToggleAspectRatio(int choice);
 extern void M_CrispyToggleAutomapstats(int choice);

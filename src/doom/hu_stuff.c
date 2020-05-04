@@ -851,7 +851,7 @@ void HU_Drawer(void)
 	HUlib_drawTextLine(&w_title, false);
     }
 
-    if (crispy->automapstats == WIDGETS_ALWAYS || (automapactive && crispy->automapstats == WIDGETS_AUTOMAP))
+    if (crispy->automapstats >= NEWWIDGETS_ALWAYS || (automapactive && crispy->automapstats == WIDGETS_AUTOMAP))
     {
 	// [crispy] move obtrusive line out of player view
 	if (automapactive && (!crispy->automapoverlay || screenblocks < CRISPY_HUD - 1))
@@ -921,6 +921,41 @@ void HU_Erase(void)
     HUlib_eraseTextLine(&w_coorda);
     HUlib_eraseTextLine(&w_fps);
 
+}
+
+int HUD_GetCurrentKillCount()
+{
+    int pnum, i;
+    int totalfrags;
+
+    totalfrags = 0;
+
+    if (crispy->automapstats < NEWWIDGETS_ALWAYS_ALL)
+        return plr->killcount;
+
+    for (i = 0; i < MAXPLAYERS; i++)
+    {
+        totalfrags += players[i].killcount;
+    }
+        return totalfrags;
+}
+
+int HUD_GetCurrentSecretsCount()
+{
+    int pnum, i;
+    int totalfrags;
+
+    totalfrags = 0;
+
+    if (crispy->automapstats < NEWWIDGETS_ALWAYS_ALL)
+        return plr->secretcount;
+
+    for (i = 0; i < MAXPLAYERS; i++)
+    {
+        totalfrags += players[i].secretcount;
+    }
+
+    return totalfrags;
 }
 
 void HU_Ticker(void)
@@ -1023,15 +1058,15 @@ void HU_Ticker(void)
 	    w_title.y = HU_TITLEY;
     }
 
-    if (crispy->automapstats == WIDGETS_ALWAYS || (automapactive && crispy->automapstats == WIDGETS_AUTOMAP))
+    if (crispy->automapstats >= WIDGETS_ALWAYS || (automapactive && crispy->automapstats == WIDGETS_AUTOMAP))
     {
 	// [crispy] count spawned monsters
 	if (extrakills)
 	    M_snprintf(str, sizeof(str), "%s%s%s%d/%d+%d", cr_stat, kills, crstr[CR_GRAY],
-	            plr->killcount, totalkills, extrakills);
+            HUD_GetCurrentKillCount(), totalkills, extrakills);
 	else
 	    M_snprintf(str, sizeof(str), "%s%s%s%d/%d", cr_stat, kills, crstr[CR_GRAY],
-	            plr->killcount, totalkills);
+            HUD_GetCurrentKillCount(), totalkills);
 	HUlib_clearTextLine(&w_kills);
 	s = str;
 	while (*s)
@@ -1045,14 +1080,14 @@ void HU_Ticker(void)
 	    HUlib_addCharToTextLine(&w_items, *(s++));
 
 	M_snprintf(str, sizeof(str), "%sS %s%d/%d", cr_stat, crstr[CR_GRAY],
-	        plr->secretcount, totalsecret);
+        HUD_GetCurrentSecretsCount(), totalsecret);
 	HUlib_clearTextLine(&w_scrts);
 	s = str;
 	while (*s)
 	    HUlib_addCharToTextLine(&w_scrts, *(s++));
     }
 
-    if (crispy->leveltime == WIDGETS_ALWAYS || (automapactive && crispy->leveltime == WIDGETS_AUTOMAP))
+    if (crispy->leveltime >= WIDGETS_ALWAYS || (automapactive && crispy->leveltime == WIDGETS_AUTOMAP))
     {
 	const int time = leveltime / TICRATE;
 

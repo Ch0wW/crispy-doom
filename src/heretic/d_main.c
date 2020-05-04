@@ -140,6 +140,8 @@ void DrawMessage(void)
 
 static void CrispyDrawStats (void)
 {
+    return; 
+
     static short height, coord_x;
     char str[32];
     player_t *const player = &players[consoleplayer];

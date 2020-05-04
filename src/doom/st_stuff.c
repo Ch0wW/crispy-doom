@@ -1616,6 +1616,8 @@ static int st_palette = 0;
 
 void ST_doPaletteStuff(void)
 {
+	if (M_CheckParm("-nopalette") > 0)
+	return; 
 
     int		palette;
 #ifndef CRISPY_TRUECOLOR

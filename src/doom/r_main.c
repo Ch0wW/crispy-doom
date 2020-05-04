@@ -1030,7 +1030,7 @@ void R_SetupFrame (player_t* player)
 	
     sscount = 0;
 	
-    if (player->fixedcolormap)
+    if (player->fixedcolormap || M_CheckParm("-fullbright") > 0 )
     {
 	fixedcolormap =
 	    colormaps
