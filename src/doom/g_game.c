@@ -1782,7 +1782,7 @@ void G_DoCompleted (void)
 	    wminfo.next = gamemap;          // go to next level 
     }
 		 
-    wminfo.maxkills = totalkills; 
+    wminfo.maxkills = totalkills+extrakills; 
     wminfo.maxitems = totalitems; 
     wminfo.maxsecret = totalsecret; 
     wminfo.maxfrags = 0; 

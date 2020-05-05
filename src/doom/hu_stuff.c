@@ -1082,12 +1082,8 @@ void HU_Ticker(void)
     if (crispy->automapstats >= WIDGETS_ALWAYS || (automapactive && crispy->automapstats == WIDGETS_AUTOMAP))
     {
 	// [crispy] count spawned monsters
-	if (extrakills)
-	    M_snprintf(str, sizeof(str), "%s%s%s%d/%d+%d", cr_stat, kills, crstr[CR_GRAY],
-            HUD_GetCurrentKillCount(), totalkills, extrakills);
-	else
-	    M_snprintf(str, sizeof(str), "%s%s%s%d/%d", cr_stat, kills, crstr[CR_GRAY],
-            HUD_GetCurrentKillCount(), totalkills);
+	M_snprintf(str, sizeof(str), "%s%s%s%d/%d", cr_stat, kills, crstr[CR_GRAY],
+        HUD_GetCurrentKillCount(), totalkills+extrakills);
 	HUlib_clearTextLine(&w_kills);
 	s = str;
 	while (*s)
