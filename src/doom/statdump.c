@@ -62,7 +62,7 @@ static GameMission_t discovered_gamemission = none;
  * how to format the level name.  Unfortunately, in some cases it is
  * impossible to determine whether this is Doom 1 or Doom 2. */
 
-static void DiscoverGamemode(wbstartstruct_t *stats, int num_stats)
+static void DiscoverGamemode(const wbstartstruct_t *stats, int num_stats)
 {
     int partime;
     int level;
@@ -117,7 +117,7 @@ static void DiscoverGamemode(wbstartstruct_t *stats, int num_stats)
 
 /* Returns the number of players active in the given stats buffer. */
 
-static int GetNumPlayers(wbstartstruct_t *stats)
+static int GetNumPlayers(const wbstartstruct_t *stats)
 {
     int i;
     int num_players = 0;
@@ -159,10 +159,10 @@ static void PrintPercentage(FILE *stream, int amount, int total)
 
 /* Display statistics for a single player. */
 
-static void PrintPlayerStats(FILE *stream, wbstartstruct_t *stats,
+static void PrintPlayerStats(FILE *stream, const wbstartstruct_t *stats,
         int player_num)
 {
-    wbplayerstruct_t *player = &stats->plyr[player_num];
+    const wbplayerstruct_t *player = &stats->plyr[player_num];
 
     fprintf(stream, "Player %i (%s):\n", player_num + 1,
             player_colors[player_num]);
@@ -188,7 +188,7 @@ static void PrintPlayerStats(FILE *stream, wbstartstruct_t *stats,
 
 /* Frags table for multiplayer games. */
 
-static void PrintFragsTable(FILE *stream, wbstartstruct_t *stats)
+static void PrintFragsTable(FILE *stream, const wbstartstruct_t *stats)
 {
     int x, y;
 
@@ -291,7 +291,7 @@ static void PrintLevelName(FILE *stream, int episode, int level)
 
 /* Print details of a statistics buffer to the given file. */
 
-static void PrintStats(FILE *stream, wbstartstruct_t *stats)
+static void PrintStats(FILE *stream, const wbstartstruct_t *stats)
 {
     short leveltime, partime;
     int i;
@@ -346,7 +346,7 @@ static void PrintStats(FILE *stream, wbstartstruct_t *stats)
     fprintf(stream, "\n");
 }
 
-void StatCopy(wbstartstruct_t *stats)
+void StatCopy(const wbstartstruct_t *stats)
 {
     if (M_ParmExists("-statdump") && num_captured_stats < MAX_CAPTURES)
     {
@@ -389,7 +389,7 @@ void StatDump(void)
         }
         else
         {
-            dumpfile = NULL;
+            dumpfile = stdout;
         }
 
         for (i = 0; i < num_captured_stats; ++i)
@@ -397,7 +397,7 @@ void StatDump(void)
             PrintStats(dumpfile, &captured_stats[i]);
         }
 
-        if (dumpfile != NULL)
+        if (dumpfile != stdout)
         {
             fclose(dumpfile);
         }

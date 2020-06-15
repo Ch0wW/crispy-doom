@@ -82,8 +82,9 @@ line_t*		ceilingline;
 // keep track of special lines as they are hit,
 // but don't process them until the move is proven valid
 
-line_t*		spechit[MAXSPECIALCROSS];
+line_t**	spechit; // [crispy] remove SPECHIT limit
 int		numspechit;
+static int spechit_max; // [crispy] remove SPECHIT limit
 
 
 
@@ -260,6 +261,12 @@ boolean PIT_CheckLine (line_t* ld)
     // if contacted a special line, add it to the list
     if (ld->special)
     {
+        // [crispy] remove SPECHIT limit
+        if (numspechit >= spechit_max)
+        {
+            spechit_max = spechit_max ? spechit_max * 2 : MAXSPECIALCROSS;
+            spechit = I_Realloc(spechit, sizeof(*spechit) * spechit_max);
+        }
         spechit[numspechit] = ld;
 	numspechit++;
 
@@ -1235,8 +1242,8 @@ P_AimLineAttack
     shootz = t1->z + (t1->height>>1) + 8*FRACUNIT;
 
     // can't shoot outside view angles
-    topslope = (SCREENHEIGHT/2)*FRACUNIT/(SCREENWIDTH/2);	
-    bottomslope = -(SCREENHEIGHT/2)*FRACUNIT/(SCREENWIDTH/2);
+    topslope = (ORIGHEIGHT/2)*FRACUNIT/(ORIGWIDTH/2);
+    bottomslope = -(ORIGHEIGHT/2)*FRACUNIT/(ORIGWIDTH/2);
     
     attackrange = distance;
     linetarget = NULL;

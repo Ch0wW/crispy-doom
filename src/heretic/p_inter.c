@@ -120,11 +120,10 @@ static boolean GetAmmoChangePL2[NUMWEAPONS][NUMAMMO] =
 //--------------------------------------------------------------------------
 
 boolean ultimatemsg;
+extern boolean messageson;
 
 void P_SetMessage(player_t * player, const char *message, boolean ultmsg)
 {
-    extern boolean messageson;
-
     if ((ultimatemsg || !messageson) && !ultmsg)
     {
         return;
@@ -138,6 +137,23 @@ void P_SetMessage(player_t * player, const char *message, boolean ultmsg)
     }
 }
 
+//--------------------------------------------------------------------------
+//
+// PROC P_SetCenterMessage
+//
+// [crispy] Set centered message
+//
+//--------------------------------------------------------------------------
+void P_SetCenterMessage(player_t * player, const char *message)
+{
+    if (!messageson)
+    {
+        return;
+    }
+    player->centerMessage = message;
+    player->centerMessageTics = MESSAGETICS;
+    BorderTopRefresh = true;
+}
 //--------------------------------------------------------------------------
 //
 // FUNC P_GiveAmmo

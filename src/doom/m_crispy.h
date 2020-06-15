@@ -23,10 +23,9 @@
 typedef struct
 {
     int value;
-    char *name;
+    const char *name;
 } multiitem_t;
 
-extern multiitem_t multiitem_aspectratio[NUM_ASPECTRATIOS];
 extern multiitem_t multiitem_bobfactor[NUM_BOBFACTORS];
 extern multiitem_t multiitem_brightmaps[NUM_BRIGHTMAPS];
 extern multiitem_t multiitem_centerweapon[NUM_CENTERWEAPON];
@@ -44,7 +43,6 @@ extern multiitem_t multiitem_translucency[NUM_TRANSLUCENCY];
 extern multiitem_t multiitem_widgets[NUM_WIDGETS];
 extern multiitem_t multiitem_newwidgets[NUM_NEWWIDGETS];
 
-extern void M_CrispyToggleAspectRatio(int choice);
 extern void M_CrispyToggleAutomapstats(int choice);
 extern void M_CrispyToggleBobfactor(int choice);
 extern void M_CrispyToggleBrightmaps(int choice);
@@ -58,6 +56,7 @@ extern void M_CrispyToggleCrosshairtype(int choice);
 extern void M_CrispyToggleDemoBar(int choice);
 extern void M_CrispyToggleDemoTimer(int choice);
 extern void M_CrispyToggleDemoTimerDir(int choice);
+extern void M_CrispyToggleDemoUseTimer(int choice);
 extern void M_CrispyToggleExtAutomap(int choice);
 extern void M_CrispyToggleExtsaveg(int choice);
 extern void M_CrispyToggleFlipcorpses(int choice);
@@ -75,6 +74,7 @@ extern void M_CrispyTogglePlayerCoords(int choice);
 extern void M_CrispyToggleRecoil(int choice);
 extern void M_CrispyToggleSecretmessage(int choice);
 extern void M_CrispyToggleSmoothLighting(int choice);
+extern void M_CrispyToggleSmoothMap(int choice);
 extern void M_CrispyToggleSmoothScaling(int choice);
 extern void M_CrispyToggleSndChannels(int choice);
 extern void M_CrispyToggleSoundfixes(int choice);
@@ -83,5 +83,6 @@ extern void M_CrispyToggleTranslucency(int choice);
 extern void M_CrispyToggleUncapped(int choice);
 extern void M_CrispyToggleVsync(int choice);
 extern void M_CrispyToggleWeaponSquat(int choice);
+extern void M_CrispyToggleWidescreen(int choice);
 
 #endif

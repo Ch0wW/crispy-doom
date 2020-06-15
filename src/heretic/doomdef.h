@@ -187,6 +187,16 @@ typedef struct mobj_s
     int lastlook;               // player number last looked for
 
     mapthing_t spawnpoint;      // for nightmare respawn
+
+    // [AM] If true, ok to interpolate this tic.
+    int                 interp;
+
+    // [AM] Previous position of mobj before think.
+    //      Used to interpolate between positions.
+    fixed_t		oldx;
+    fixed_t		oldy;
+    fixed_t		oldz;
+    angle_t		oldangle;
 } mobj_t;
 
 // each sector has a degenmobj_t in it's center for sound origin purposes
@@ -467,11 +477,20 @@ typedef struct player_s
     int chickenPeck;            // chicken peck countdown
     mobj_t *rain1;              // active rain maker 1
     mobj_t *rain2;              // active rain maker 2
+
+    // [crispy] show centered "Secret Revealed!" message
+    const char *centerMessage;
+    int centerMessageTics;            // counter for showing centered messages
+
+    // [AM] Previous position of viewz before think.
+    //      Used to interpolate between camera positions.
+    angle_t		oldviewz;
 } player_t;
 
 #define CF_NOCLIP		1
 #define	CF_GODMODE		2
 #define	CF_NOMOMENTUM	4       // not really a cheat, just a debug aid
+#define CF_SHOWFPS      8       // [crispy]
 
 #define	SBARHEIGHT	(42 << crispy->hires)      // status bar height at bottom of screen
 
@@ -680,7 +699,7 @@ uint32_t SV_ReadLong(void);
 extern char *savegamedir;
 
 void G_RecordDemo(skill_t skill, int numplayers, int episode, int map,
-                  char *name);
+                  const char *name);
 // only called by startup code
 
 void G_PlayDemo(char *name);

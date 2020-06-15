@@ -307,9 +307,12 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
 
     strafe = gamekeydown[key_strafe] || mousebuttons[mousebstrafe]
         || joybuttons[joybstrafe];
-    speed = joybspeed >= MAX_JOY_BUTTONS
-         || gamekeydown[key_speed]
-         || joybuttons[joybspeed];
+
+    // [crispy] when "always run" is active,
+    // pressing the "run" key will result in walking
+    speed = (joybspeed >= MAX_JOY_BUTTONS)
+        ^ (gamekeydown[key_speed]
+            || (joybspeed < MAX_JOY_BUTTONS && joybuttons[joybspeed]));
 
     // haleyjd: removed externdriver crap
     
@@ -345,6 +348,44 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
         lspeed = 2;
     }
 
+    // [crispy] toggle "always run"
+    if (gamekeydown[key_toggleautorun])
+    {
+        static int joybspeed_old = 2;
+
+        if (joybspeed >= MAX_JOY_BUTTONS)
+        {
+            joybspeed = joybspeed_old;
+        }
+        else
+        {
+            joybspeed_old = joybspeed;
+            joybspeed = 29;
+        }
+
+        P_SetMessage(&players[consoleplayer], (joybspeed >= MAX_JOY_BUTTONS) ?
+                     "ALWAYS RUN ON" :
+                     "ALWAYS RUN OFF", false);
+
+        S_StartSound(NULL, sfx_switch);
+
+        gamekeydown[key_toggleautorun] = false;
+    }
+
+    // [crispy] Toggle vertical mouse movement
+    if (gamekeydown[key_togglenovert])
+    {
+        novert = !novert;
+
+        P_SetMessage(&players[consoleplayer], novert ?
+                     "VERTICAL MOUSE MOVEMENT OFF" :
+                     "VERTICAL MOUSE MOVEMENT ON", false);
+
+        S_StartSound(NULL, sfx_switch);
+
+        gamekeydown[key_togglenovert] = false;
+    }
+
 //
 // let movement keys cancel each other out
 //
@@ -371,18 +412,18 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
             cmd->angleturn += angleturn[tspeed];
     }
 
-    if (gamekeydown[key_up])
+    if (gamekeydown[key_up] || gamekeydown[key_alt_up]) // [crispy] add key_alt_*
         forward += forwardmove[speed];
-    if (gamekeydown[key_down])
+    if (gamekeydown[key_down] || gamekeydown[key_alt_down]) // [crispy] add key_alt_*
         forward -= forwardmove[speed];
     if (joyymove < 0)
         forward += forwardmove[speed];
     if (joyymove > 0)
         forward -= forwardmove[speed];
-    if (gamekeydown[key_straferight] || mousebuttons[mousebstraferight]
+    if (gamekeydown[key_straferight] || gamekeydown[key_alt_straferight] || mousebuttons[mousebstraferight] // [crispy] add key_alt_*
      || joybuttons[joybstraferight] || joystrafemove > 0)
         side += sidemove[speed];
-    if (gamekeydown[key_strafeleft] || mousebuttons[mousebstrafeleft]
+    if (gamekeydown[key_strafeleft] || gamekeydown[key_alt_strafeleft] || mousebuttons[mousebstrafeleft] // [crispy] add key_alt_*
      || joybuttons[joybstrafeleft] || joystrafemove < 0)
         side -= sidemove[speed];
 
@@ -447,11 +488,57 @@ void G_BuildTiccmd(ticcmd_t *cmd, int maketic)
             }
         }
     }
-    if (gamekeydown[127] && !cmd->arti
+    if (gamekeydown[key_arti_tome] && !cmd->arti
         && !players[consoleplayer].powers[pw_weaponlevel2])
     {
-        gamekeydown[127] = false;
+        gamekeydown[key_arti_tome] = false;
         cmd->arti = arti_tomeofpower;
+    }
+    else if (gamekeydown[key_arti_quartz] && !cmd->arti
+        && (players[consoleplayer].mo->health < MAXHEALTH))
+    {
+        gamekeydown[key_arti_quartz] = false;
+        cmd->arti = arti_health;
+    }
+    else if (gamekeydown[key_arti_urn] && !cmd->arti)
+    {
+        gamekeydown[key_arti_urn] = false;
+        cmd->arti = arti_superhealth;
+    }
+    else if (gamekeydown[key_arti_bomb] && !cmd->arti)
+    {
+        gamekeydown[key_arti_bomb] = false;
+        cmd->arti = arti_firebomb;
+    }
+    else if (gamekeydown[key_arti_ring] && !cmd->arti)
+    {
+        gamekeydown[key_arti_ring] = false;
+        cmd->arti = arti_invulnerability;
+    }
+    else if (gamekeydown[key_arti_chaosdevice] && !cmd->arti)
+    {
+        gamekeydown[key_arti_chaosdevice] = false;
+        cmd->arti = arti_teleport;
+    }
+    else if (gamekeydown[key_arti_shadowsphere] && !cmd->arti)
+    {
+        gamekeydown[key_arti_shadowsphere] = false;
+        cmd->arti = arti_invisibility;
+    }
+    else if (gamekeydown[key_arti_wings] && !cmd->arti)
+    {
+        gamekeydown[key_arti_wings] = false;
+        cmd->arti = arti_fly;
+    }
+    else if (gamekeydown[key_arti_torch] && !cmd->arti)
+    {
+        gamekeydown[key_arti_torch] = false;
+        cmd->arti = arti_torch;
+    }
+    else if (gamekeydown[key_arti_morph] && !cmd->arti)
+    {
+        gamekeydown[key_arti_morph] = false;
+        cmd->arti = arti_egg;
     }
 
 //
@@ -731,6 +818,59 @@ static void SetJoyButtons(unsigned int buttons_mask)
     }
 }
 
+static boolean InventoryMoveLeft()
+{
+    inventoryTics = 5 * 35;
+    if (!inventory)
+    {
+        inventory = true;
+        return false;
+    }
+    inv_ptr--;
+    if (inv_ptr < 0)
+    {
+        inv_ptr = 0;
+    }
+    else
+    {
+        curpos--;
+        if (curpos < 0)
+        {
+            curpos = 0;
+        }
+    }
+    return true;
+}
+
+static boolean InventoryMoveRight()
+{
+    player_t *plr;
+
+    plr = &players[consoleplayer];
+    inventoryTics = 5 * 35;
+    if (!inventory)
+    {
+        inventory = true;
+        return false;
+    }
+    inv_ptr++;
+    if (inv_ptr >= plr->inventorySlotNum)
+    {
+        inv_ptr--;
+        if (inv_ptr < 0)
+            inv_ptr = 0;
+    }
+    else
+    {
+        curpos++;
+        if (curpos > 6)
+        {
+            curpos = 6;
+        }
+    }
+    return true;
+}
+
 static void SetMouseButtons(unsigned int buttons_mask)
 {
     int i;
@@ -750,6 +890,14 @@ static void SetMouseButtons(unsigned int buttons_mask)
             else if (i == mousebnextweapon)
             {
                 next_weapon = 1;
+            }
+            else if (i == mousebinvleft)
+            {
+                InventoryMoveLeft();
+            }
+            else if (i == mousebinvright)
+            {
+                InventoryMoveRight();
             }
         }
 
@@ -833,51 +981,19 @@ boolean G_Responder(event_t * ev)
         case ev_keydown:
             if (ev->data1 == key_invleft)
             {
-                inventoryTics = 5 * 35;
-                if (!inventory)
+                if (InventoryMoveLeft())
                 {
-                    inventory = true;
-                    break;
+                    return (true);
                 }
-                inv_ptr--;
-                if (inv_ptr < 0)
-                {
-                    inv_ptr = 0;
-                }
-                else
-                {
-                    curpos--;
-                    if (curpos < 0)
-                    {
-                        curpos = 0;
-                    }
-                }
-                return (true);
+                break;
             }
             if (ev->data1 == key_invright)
             {
-                inventoryTics = 5 * 35;
-                if (!inventory)
+                if (InventoryMoveRight())
                 {
-                    inventory = true;
-                    break;
+                    return (true);
                 }
-                inv_ptr++;
-                if (inv_ptr >= plr->inventorySlotNum)
-                {
-                    inv_ptr--;
-                    if (inv_ptr < 0)
-                        inv_ptr = 0;
-                }
-                else
-                {
-                    curpos++;
-                    if (curpos > 6)
-                    {
-                        curpos = 6;
-                    }
-                }
-                return (true);
+                break;
             }
             if (ev->data1 == key_pause && !MenuActive)
             {
@@ -1065,6 +1181,9 @@ void G_Ticker(void)
         inventory = false;
         cmd->arti = 0;
     }
+
+    oldleveltime = leveltime; // [crispy] Track if game is running
+
 //
 // do main actions
 //
@@ -1162,6 +1281,7 @@ void G_PlayerFinishLevel(int player)
         p->chickenTics = 0;
     }
     p->messageTics = 0;
+    p->centerMessageTics = 0;
     p->lookdir = 0;
     p->mo->flags &= ~MF_SHADOW; // Remove invisibility
     p->extralight = 0;          // Remove weapon flashes
@@ -1783,7 +1903,7 @@ void G_WriteDemoTiccmd(ticcmd_t * cmd)
 */
 
 void G_RecordDemo(skill_t skill, int numplayers, int episode, int map,
-                  char *name)
+                  const char *name)
 {
     int i;
     int maxsize;
@@ -1804,10 +1924,11 @@ void G_RecordDemo(skill_t skill, int numplayers, int episode, int map,
     //!
     // @category demo
     //
-    // Smooth out low resolution turning when recording a demo.
+    // Don't smooth out low resolution turning when recording a demo.
     //
 
-    shortticfix = M_ParmExists("-shortticfix");
+    shortticfix = (!M_ParmExists("-noshortticfix"));
+    //[crispy] make shortticfix the default
 
     G_InitNew(skill, episode, map);
     usergame = false;

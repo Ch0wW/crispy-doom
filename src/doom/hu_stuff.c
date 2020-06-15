@@ -17,6 +17,7 @@
 
 
 #include <ctype.h>
+#include <stdlib.h>
 
 #include "doomdef.h"
 #include "doomkeys.h"
@@ -60,7 +61,7 @@
 #define HU_TITLEM	(mapnames_commercial[gamemap-1 + 105 + 3])
 #define HU_TITLE_CHEX   (mapnames_chex[(gameepisode-1)*9+gamemap-1])
 #define HU_TITLEHEIGHT	1
-#define HU_TITLEX	0
+#define HU_TITLEX	(0 - WIDESCREENDELTA)
 #define HU_TITLEY	(167 - SHORT(hu_font[0]->height))
 
 #define HU_INPUTTOGGLE	't'
@@ -69,22 +70,10 @@
 #define HU_INPUTWIDTH	64
 #define HU_INPUTHEIGHT	1
 
-#define HU_COORDX	(ORIGWIDTH - 7 * hu_font['A'-HU_FONTSTART]->width)
+#define HU_COORDX	((ORIGWIDTH - 7 * hu_font['A'-HU_FONTSTART]->width) + WIDESCREENDELTA)
 
 
-char *chat_macros[10] =
-{
-    HUSTR_CHATMACRO0,
-    HUSTR_CHATMACRO1,
-    HUSTR_CHATMACRO2,
-    HUSTR_CHATMACRO3,
-    HUSTR_CHATMACRO4,
-    HUSTR_CHATMACRO5,
-    HUSTR_CHATMACRO6,
-    HUSTR_CHATMACRO7,
-    HUSTR_CHATMACRO8,
-    HUSTR_CHATMACRO9
-};
+char *chat_macros[10];
 
 const char *player_names[] =
 {
@@ -411,7 +400,7 @@ const char *mapnames_commercial[] =
     MHUSTR_21
 };
 
-static void CrispyReplaceColor (char *str, const int cr, const char *col)
+static void CrispyReplaceColor (const char *str, const int cr, const char *col)
 {
     char *str_replace, col_replace[16];
 
@@ -592,6 +581,8 @@ static void HU_SetSpecialLevelName (const char *wad, const char **name)
     }
 }
 
+static int hu_widescreendelta;
+
 void HU_Start(void)
 {
 
@@ -609,6 +600,10 @@ void HU_Start(void)
     message_nottobefuckedwith = false;
     secret_on = false;
     chat_on = false;
+
+    // [crispy] re-calculate WIDESCREENDELTA
+    I_GetScreenDimensions();
+    hu_widescreendelta = WIDESCREENDELTA;
 
     // create the message widget
     HUlib_initSText(&w_message,
@@ -721,7 +716,10 @@ void HU_Start(void)
 
     // [crispy] explicitely display (episode and) map if the
     // map is from a PWAD or if the map title string has been dehacked
-    if (DEH_HasStringReplacement(s) || (!W_IsIWADLump(maplumpinfo) && (!nervewadfile || gamemission != pack_nerve)))
+    if (DEH_HasStringReplacement(s) ||
+        (!W_IsIWADLump(maplumpinfo) &&
+        !(crispy->havenerve && gamemission == pack_nerve) &&
+        !(crispy->havemaster && gamemission == pack_master)))
     {
 	char *m;
 
@@ -826,8 +824,14 @@ void HU_Drawer(void)
 	return;
     }
 
+    // [crispy] re-calculate widget coordinates on demand
+    if (hu_widescreendelta != WIDESCREENDELTA)
+    {
+        HU_Start();
+    }
+
     // [crispy] translucent messages for translucent HUD
-    if (screenblocks > CRISPY_HUD + 1 && (!automapactive || crispy->automapoverlay))
+    if (screenblocks >= CRISPY_HUD && (screenblocks % 3 == 2) && (!automapactive || crispy->automapoverlay))
 	dp_translucent = true;
 
     if (secret_on && !menuactive)
@@ -862,7 +866,8 @@ void HU_Drawer(void)
 	HUlib_drawTextLine(&w_scrts, false);
     }
 
-    if (crispy->leveltime == WIDGETS_ALWAYS || (automapactive && crispy->leveltime == WIDGETS_AUTOMAP))
+    if (crispy->leveltime == WIDGETS_ALWAYS || (automapactive && crispy->leveltime == WIDGETS_AUTOMAP) ||
+        (crispy->btusetimer && plr->btuse_tics))
     {
 	HUlib_drawTextLine(&w_ltime, false);
     }
@@ -883,9 +888,7 @@ void HU_Drawer(void)
 	HU_DrawCrosshair();
 
     dp_translation = NULL;
-
-    if (dp_translucent)
-	dp_translucent = false;
+    dp_translucent = false;
 
     // [crispy] demo timer widget
     if (demoplayback && (crispy->demotimer & DEMOTIMER_PLAYBACK))
@@ -1114,6 +1117,21 @@ void HU_Ticker(void)
 	else
 	    M_snprintf(str, sizeof(str), "%s%02d:%02d", crstr[CR_GRAY],
 	            time/60, time%60);
+	HUlib_clearTextLine(&w_ltime);
+	s = str;
+	while (*s)
+	    HUlib_addCharToTextLine(&w_ltime, *(s++));
+    }
+
+    // [crispy] "use" button timer overrides the level time widget
+    if (crispy->btusetimer && plr->btuse_tics)
+    {
+	const int mins = plr->btuse / (60 * TICRATE);
+	const float secs = (float)(plr->btuse % (60 * TICRATE)) / TICRATE;
+
+	plr->btuse_tics--;
+
+	M_snprintf(str, sizeof(str), "%sU %02i:%05.02f", crstr[CR_GRAY], mins, secs);
 	HUlib_clearTextLine(&w_ltime);
 	s = str;
 	while (*s)

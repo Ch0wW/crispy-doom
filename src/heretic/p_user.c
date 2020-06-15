@@ -535,6 +535,19 @@ void P_PlayerThink(player_t * player)
     ticcmd_t *cmd;
     weapontype_t newweapon;
 
+    // [AM] Assume we can interpolate at the beginning
+    //      of the tic.
+    player->mo->interp = true;
+
+    // [AM] Store starting position for player interpolation.
+    player->mo->oldx = player->mo->x;
+    player->mo->oldy = player->mo->y;
+    player->mo->oldz = player->mo->z;
+    player->mo->oldangle = player->mo->angle;
+    player->oldviewz = player->viewz;
+    // player->oldlookdir = player->lookdir;
+    // player->oldrecoilpitch = player->recoilpitch;
+
     // No-clip cheat
     if (player->cheats & CF_NOCLIP)
     {
@@ -560,6 +573,19 @@ void P_PlayerThink(player_t * player)
         ultimatemsg = false;    // clear out any chat messages.
         BorderTopRefresh = true;
     }
+    
+    // [crispy] Decrement centered message tics if greater than 0
+    if (player->centerMessageTics > 0)
+    {
+        player->centerMessageTics--;
+
+        if (!player->centerMessageTics)
+        {
+            // Refresh the screen when a message goes away
+            BorderNeedRefresh = true;
+        }
+    }
+
     if (player->playerstate == PST_DEAD)
     {
         P_DeathThink(player);

@@ -17,6 +17,8 @@
 //
 
 
+#include <stdlib.h>
+
 #include "SDL.h"
 #include "SDL_opengl.h"
 
@@ -50,6 +52,8 @@
 #include "z_zone.h"
 
 int SCREENWIDTH, SCREENHEIGHT, SCREENHEIGHT_4_3;
+int NONWIDEWIDTH; // [crispy] non-widescreen SCREENWIDTH
+int WIDESCREENDELTA; // [crispy] horizontal widescreen offset
 
 // These are (1) the window (or the full screen) that our game is rendered to
 // and (2) the renderer that scales the texture (see below) into this window.
@@ -1298,7 +1302,7 @@ static void SetVideoMode(void)
 #ifndef CRISPY_TRUECOLOR
     unsigned int rmask, gmask, bmask, amask;
 #endif
-    int unused_bpp;
+    int bpp;
     int window_flags = 0, renderer_flags = 0;
     SDL_DisplayMode mode;
 
@@ -1476,10 +1480,10 @@ static void SetVideoMode(void)
 
     if (argbbuffer == NULL)
     {
-        SDL_PixelFormatEnumToMasks(pixel_format, &unused_bpp,
+        SDL_PixelFormatEnumToMasks(pixel_format, &bpp,
                                    &rmask, &gmask, &bmask, &amask);
         argbbuffer = SDL_CreateRGBSurface(0,
-                                          SCREENWIDTH, SCREENHEIGHT, 32,
+                                          SCREENWIDTH, SCREENHEIGHT, bpp,
                                           rmask, gmask, bmask, amask);
 #ifdef CRISPY_TRUECOLOR
         SDL_FillRect(argbbuffer, NULL, I_MapRGB(0xff, 0x0, 0x0));
@@ -1522,6 +1526,43 @@ static void SetVideoMode(void)
     CreateUpscaledTexture(true);
 }
 
+// [crispy] re-calculate SCREENWIDTH, SCREENHEIGHT, NONWIDEWIDTH and WIDESCREENDELTA
+void I_GetScreenDimensions (void)
+{
+	SDL_DisplayMode mode;
+	int w = 16, h = 10;
+	int ah;
+
+	SCREENWIDTH = ORIGWIDTH << crispy->hires;
+	SCREENHEIGHT = ORIGHEIGHT << crispy->hires;
+
+	NONWIDEWIDTH = SCREENWIDTH;
+
+	ah = (aspect_ratio_correct == 1) ? (6 * SCREENHEIGHT / 5) : SCREENHEIGHT;
+
+	if (SDL_GetCurrentDisplayMode(video_display, &mode) == 0)
+	{
+		// [crispy] sanity check: really widescreen display?
+		if (mode.w * ah >= mode.h * SCREENWIDTH)
+		{
+			w = mode.w;
+			h = mode.h;
+		}
+	}
+
+	// [crispy] widescreen rendering makes no sense without aspect ratio correction
+	if (crispy->widescreen && aspect_ratio_correct)
+	{
+		SCREENWIDTH = w * ah / h;
+		// [crispy] make sure SCREENWIDTH is an integer multiple of 4 ...
+		SCREENWIDTH = (SCREENWIDTH + 3) & (int)~3;
+		// [crispy] ... but never exceeds MAXWIDTH (array size!)
+		SCREENWIDTH = MIN(SCREENWIDTH, MAXWIDTH);
+	}
+
+	WIDESCREENDELTA = ((SCREENWIDTH - NONWIDEWIDTH) >> crispy->hires) / 2;
+}
+
 void I_InitGraphics(void)
 {
     SDL_Event dummy;
@@ -1562,18 +1603,8 @@ void I_InitGraphics(void)
     }
 
     // [crispy] run-time variable high-resolution rendering
-    if (crispy->hires)
-    {
-        SCREENWIDTH = MAXWIDTH;
-        SCREENHEIGHT = MAXHEIGHT;
-        SCREENHEIGHT_4_3 = MAXHEIGHT_4_3;
-    }
-    else
-    {
-        SCREENWIDTH = ORIGWIDTH;
-        SCREENHEIGHT = ORIGHEIGHT;
-        SCREENHEIGHT_4_3 = ORIGHEIGHT_4_3;
-    }
+    I_GetScreenDimensions();
+
 #ifndef CRISPY_TRUECOLOR
     blit_rect.w = SCREENWIDTH;
     blit_rect.h = SCREENHEIGHT;
@@ -1584,7 +1615,7 @@ void I_InitGraphics(void)
 
     if (aspect_ratio_correct == 1)
     {
-        actualheight = SCREENHEIGHT_4_3;
+        actualheight = 6 * SCREENHEIGHT / 5;
     }
     else
     {
@@ -1659,18 +1690,8 @@ void I_ReInitGraphics (int reinit)
 		unsigned int rmask, gmask, bmask, amask;
 		int unused_bpp;
 
-		if (crispy->hires)
-		{
-			SCREENWIDTH = MAXWIDTH;
-			SCREENHEIGHT = MAXHEIGHT;
-			SCREENHEIGHT_4_3 = MAXHEIGHT_4_3;
-		}
-		else
-		{
-			SCREENWIDTH = ORIGWIDTH;
-			SCREENHEIGHT = ORIGHEIGHT;
-			SCREENHEIGHT_4_3 = ORIGHEIGHT_4_3;
-		}
+		I_GetScreenDimensions();
+
 #ifndef CRISPY_TRUECOLOR
 		blit_rect.w = SCREENWIDTH;
 		blit_rect.h = SCREENHEIGHT;
@@ -1749,7 +1770,7 @@ void I_ReInitGraphics (int reinit)
 	{
 		if (aspect_ratio_correct == 1)
 		{
-			actualheight = SCREENHEIGHT_4_3;
+			actualheight = 6 * SCREENHEIGHT / 5;
 		}
 		else
 		{

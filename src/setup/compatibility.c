@@ -61,6 +61,7 @@ void BindCompatibilityVariables(void)
         M_BindIntVariable("crispy_automaprotate",   &crispy->automaprotate);
         M_BindIntVariable("crispy_automapstats",    &crispy->automapstats);
         M_BindIntVariable("crispy_bobfactor",       &crispy->bobfactor);
+        M_BindIntVariable("crispy_btusetimer",      &crispy->btusetimer);
         M_BindIntVariable("crispy_brightmaps",      &crispy->brightmaps);
         M_BindIntVariable("crispy_centerweapon",    &crispy->centerweapon);
         M_BindIntVariable("crispy_coloredblood",    &crispy->coloredblood);
@@ -88,6 +89,7 @@ void BindCompatibilityVariables(void)
         M_BindIntVariable("crispy_recoil",          &crispy->recoil);
         M_BindIntVariable("crispy_secretmessage",   &crispy->secretmessage);
         M_BindIntVariable("crispy_smoothlight",     &crispy->smoothlight);
+        M_BindIntVariable("crispy_smoothmap",       &crispy->smoothmap);
         M_BindIntVariable("crispy_smoothscaling",   &crispy->smoothscaling);
         M_BindIntVariable("crispy_soundfix",        &crispy->soundfix);
         M_BindIntVariable("crispy_soundfull",       &crispy->soundfull);
@@ -99,6 +101,20 @@ void BindCompatibilityVariables(void)
         M_BindIntVariable("crispy_uncapped",        &crispy->uncapped);
         M_BindIntVariable("crispy_vsync",           &crispy->vsync);
         M_BindIntVariable("crispy_weaponsquat",     &crispy->weaponsquat);
+        M_BindIntVariable("crispy_widescreen",      &crispy->widescreen);
+    }
+    else if (gamemission == heretic)
+    {
+        M_BindIntVariable("vanilla_savegame_limit", &vanilla_savegame_limit);
+        M_BindIntVariable("vanilla_demo_limit",     &vanilla_demo_limit);
+        M_BindIntVariable("crispy_automapstats",    &crispy->automapstats);
+        M_BindIntVariable("crispy_hires",           &crispy->hires);
+        M_BindIntVariable("crispy_leveltime",       &crispy->leveltime);
+        M_BindIntVariable("crispy_playercoords",    &crispy->playercoords);
+        M_BindIntVariable("crispy_secretmessage",   &crispy->secretmessage);
+        M_BindIntVariable("crispy_smoothscaling",   &crispy->smoothscaling);
+        M_BindIntVariable("crispy_uncapped",        &crispy->uncapped);
+        M_BindIntVariable("crispy_vsync",           &crispy->vsync);
     }
     else
     {

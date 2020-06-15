@@ -20,6 +20,7 @@
 #include "deh_str.h"
 #include "i_system.h"
 #include "i_timer.h"
+#include "m_misc.h" // [crispy] So M_sprintf can be used
 #include "m_random.h"
 #include "p_local.h"
 #include "s_sound.h"
@@ -28,6 +29,8 @@
 // Macros
 
 #define MAX_AMBIENT_SFX 8       // Per level
+
+#define HUSTR_SECRETFOUND	"A SECRET IS REVEALED!" // [crispy] Secret message
 
 // Types
 
@@ -206,6 +209,10 @@ struct
 };
 
 mobj_t LavaInflictor;
+
+// [AM] Fractional part of the current tic, in the half-open
+//      range of [0.0, 1.0).  Used for interpolation.
+extern fixed_t          fractionaltic;
 
 //----------------------------------------------------------------------------
 //
@@ -842,6 +849,7 @@ void P_ShootSpecialLine(mobj_t * thing, line_t * line)
 
 void P_PlayerInSpecialSector(player_t * player)
 {
+    extern boolean messageson;
     sector_t *sector;
     static int pushTab[5] = {
         2048 * 5,
@@ -888,6 +896,18 @@ void P_PlayerInSpecialSector(player_t * player)
             break;
         case 9:                // SecretArea
             player->secretcount++;
+            // [crispy] Show centered "Secret Revealed!" message
+            if (messageson && crispy->secretmessage && player == &players[consoleplayer]) 
+            {
+                static char str_count[32];
+                
+                M_snprintf(str_count, sizeof(str_count), "SECRET %d OF %d REVEALED!", player->secretcount, totalsecret);
+
+                P_SetCenterMessage(&players[consoleplayer],
+                    (crispy->secretmessage == SECRETMESSAGE_COUNT) ? str_count : HUSTR_SECRETFOUND);
+                // Play the chat sound when secret found, it's a message after all
+                S_StartSound(NULL, sfx_chat);
+            }
             sector->special = 0;
             break;
         case 11:               // Exit_SuperDamage (DOOM E1M8 finale)
@@ -998,10 +1018,16 @@ void P_UpdateSpecials(void)
         switch (line->special)
         {
             case 48:           // Effect_Scroll_Left
-                sides[line->sidenum[0]].textureoffset += FRACUNIT;
+                // [crispy] smooth texture scrolling
+                sides[line->sidenum[0]].basetextureoffset += FRACUNIT;
+                sides[line->sidenum[0]].textureoffset =
+                    sides[line->sidenum[0]].basetextureoffset;
                 break;
             case 99:           // Effect_Scroll_Right
-                sides[line->sidenum[0]].textureoffset -= FRACUNIT;
+                // [crispy] smooth texture scrolling
+                sides[line->sidenum[0]].basetextureoffset -= FRACUNIT;
+                sides[line->sidenum[0]].textureoffset =
+                    sides[line->sidenum[0]].basetextureoffset;
                 break;
         }
     }
@@ -1031,6 +1057,31 @@ void P_UpdateSpecials(void)
                 S_StartSound(buttonlist[i].soundorg, sfx_switch);
                 memset(&buttonlist[i], 0, sizeof(button_t));
             }
+        }
+    }
+}
+
+// [crispy] smooth texture scrolling
+void R_InterpolateTextureOffsets(void)
+{
+    if (crispy->uncapped && leveltime > oldleveltime)
+    {
+        int i;
+
+        for (i = 0; i < numlinespecials; i++)
+        {
+            const line_t* const line = linespeciallist[i];
+            side_t* const side = &sides[line->sidenum[0]];
+
+            if (line->special == 48)
+            {
+                side->textureoffset = side->basetextureoffset + fractionaltic;
+            }
+            else
+                if (line->special == 85)
+                {
+                    side->textureoffset = side->basetextureoffset - fractionaltic;
+                }
         }
     }
 }

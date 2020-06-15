@@ -35,6 +35,7 @@
 #include "sounds.h"
 
 #include "d_iwad.h"
+#include "d_pwad.h" // [crispy] D_Load{Sigil,Nerve,Masterlevels}Wad()
 
 #include "z_zone.h"
 #include "w_main.h"
@@ -88,6 +89,8 @@
 //
 void D_DoomLoop (void);
 
+static char *gamedescription;
+
 // Location where savegames are stored
 
 char *          savegamedir;
@@ -128,7 +131,6 @@ char		mapdir[1024];           // directory of development maps
 int             show_endoom = 0; // [crispy] disable
 int             show_diskicon = 1;
 
-char            *nervewadfile = NULL;
 
 void D_ConnectNetGame(void);
 void D_CheckNetGame(void);
@@ -318,7 +320,7 @@ boolean D_Display (void)
 	    y = 4;
 	else
 	    y = (viewwindowy >> crispy->hires)+4;
-	V_DrawPatchDirect((viewwindowx >> crispy->hires) + ((scaledviewwidth >> crispy->hires) - 68) / 2, y,
+	V_DrawPatchDirect((viewwindowx >> crispy->hires) + ((scaledviewwidth >> crispy->hires) - 68) / 2 - WIDESCREENDELTA, y,
                           W_CacheLumpName (DEH_String("M_PAUSE"), PU_CACHE));
     }
 
@@ -354,6 +356,22 @@ void EnableLoadingDisk(void) // [crispy] un-static
 //
 // Add configuration file variable bindings.
 //
+
+
+static const char * const chat_macro_defaults[10] =
+{
+    HUSTR_CHATMACRO0,
+    HUSTR_CHATMACRO1,
+    HUSTR_CHATMACRO2,
+    HUSTR_CHATMACRO3,
+    HUSTR_CHATMACRO4,
+    HUSTR_CHATMACRO5,
+    HUSTR_CHATMACRO6,
+    HUSTR_CHATMACRO7,
+    HUSTR_CHATMACRO8,
+    HUSTR_CHATMACRO9
+};
+
 
 void D_BindVariables(void)
 {
@@ -400,6 +418,7 @@ void D_BindVariables(void)
     {
         char buf[12];
 
+        chat_macros[i] = M_StringDuplicate(chat_macro_defaults[i]);
         M_snprintf(buf, sizeof(buf), "chatmacro%i", i);
         M_BindStringVariable(buf, &chat_macros[i]);
     }
@@ -409,6 +428,7 @@ void D_BindVariables(void)
     M_BindIntVariable("crispy_automaprotate",   &crispy->automaprotate);
     M_BindIntVariable("crispy_automapstats",    &crispy->automapstats);
     M_BindIntVariable("crispy_bobfactor",       &crispy->bobfactor);
+    M_BindIntVariable("crispy_btusetimer",      &crispy->btusetimer);
     M_BindIntVariable("crispy_brightmaps",      &crispy->brightmaps);
     M_BindIntVariable("crispy_centerweapon",    &crispy->centerweapon);
     M_BindIntVariable("crispy_coloredblood",    &crispy->coloredblood);
@@ -436,6 +456,7 @@ void D_BindVariables(void)
     M_BindIntVariable("crispy_recoil",          &crispy->recoil);
     M_BindIntVariable("crispy_secretmessage",   &crispy->secretmessage);
     M_BindIntVariable("crispy_smoothlight",     &crispy->smoothlight);
+    M_BindIntVariable("crispy_smoothmap",       &crispy->smoothmap);
     M_BindIntVariable("crispy_smoothscaling",   &crispy->smoothscaling);
     M_BindIntVariable("crispy_soundfix",        &crispy->soundfix);
     M_BindIntVariable("crispy_soundfull",       &crispy->soundfull);
@@ -447,6 +468,7 @@ void D_BindVariables(void)
     M_BindIntVariable("crispy_uncapped",        &crispy->uncapped);
     M_BindIntVariable("crispy_vsync",           &crispy->vsync);
     M_BindIntVariable("crispy_weaponsquat",     &crispy->weaponsquat);
+    M_BindIntVariable("crispy_widescreen",      &crispy->widescreen);
 }
 
 //
@@ -525,7 +547,7 @@ void D_RunFrame()
 	// [crispy] post-rendering function pointer to apply config changes
 	// that affect rendering and that are better applied after the current
 	// frame has finished rendering
-	if (crispy->post_rendering_hook)
+	if (crispy->post_rendering_hook && !wipe)
 	{
 		crispy->post_rendering_hook();
 		crispy->post_rendering_hook = NULL;
@@ -779,47 +801,52 @@ static const char *banners[] =
 // Otherwise, use the name given
 // 
 
-static char *GetGameName(char *gamename)
+static char *GetGameName(const char *gamename)
 {
     size_t i;
-    const char *deh_sub;
-    
+
     for (i=0; i<arrlen(banners); ++i)
     {
+        const char *deh_sub;
         // Has the banner been replaced?
 
         deh_sub = DEH_String(banners[i]);
-        
+
         if (deh_sub != banners[i])
         {
             size_t gamename_size;
             int version;
+            char *deh_gamename;
 
             // Has been replaced.
             // We need to expand via printf to include the Doom version number
             // We also need to cut off spaces to get the basic name
 
             gamename_size = strlen(deh_sub) + 10;
-            gamename = Z_Malloc(gamename_size, PU_STATIC, 0);
+            deh_gamename = malloc(gamename_size);
+            if (deh_gamename == NULL)
+            {
+                I_Error("GetGameName: Failed to allocate new string");
+            }
             version = G_VanillaVersionCode();
-            M_snprintf(gamename, gamename_size, deh_sub,
-                       version / 100, version % 100);
+            DEH_snprintf(deh_gamename, gamename_size, banners[i],
+                         version / 100, version % 100);
 
-            while (gamename[0] != '\0' && isspace(gamename[0]))
+            while (deh_gamename[0] != '\0' && isspace(deh_gamename[0]))
             {
-                memmove(gamename, gamename + 1, gamename_size - 1);
+                memmove(deh_gamename, deh_gamename + 1, gamename_size - 1);
             }
 
-            while (gamename[0] != '\0' && isspace(gamename[strlen(gamename)-1]))
+            while (deh_gamename[0] != '\0' && isspace(deh_gamename[strlen(deh_gamename)-1]))
             {
-                gamename[strlen(gamename) - 1] = '\0';
+                deh_gamename[strlen(deh_gamename) - 1] = '\0';
             }
 
-            return gamename;
+            return deh_gamename;
         }
     }
 
-    return gamename;
+    return M_StringDuplicate(gamename);
 }
 
 static void SetMissionForPackName(const char *pack_name)
@@ -942,10 +969,8 @@ void D_IdentifyVersion(void)
 
 // Set the gamedescription string
 
-void D_SetGameDescription(void)
+static void D_SetGameDescription(void)
 {
-    gamedescription = "Unknown";
-
     if (logical_gamemission == doom)
     {
         // Doom 1.  But which version?
@@ -1001,6 +1026,11 @@ void D_SetGameDescription(void)
         {
             gamedescription = GetGameName("Master Levels for DOOM 2");
         }
+    }
+
+    if (gamedescription == NULL)
+    {
+        gamedescription = M_StringDuplicate("Unknown");
     }
 }
 
@@ -1326,239 +1356,6 @@ static void LoadIwadDeh(void)
         {
             I_Error("Failed to load chex.deh needed for emulating chex.exe.");
         }
-    }
-}
-
-// [crispy] support loading SIGIL.WAD (and SIGIL_SHREDS.WAD) alongside DOOM.WAD
-static void LoadSigilWad(void)
-{
-    int i;
-
-    struct {
-        const char *name;
-        const char new_name[8];
-    } sigil_lumps [] = {
-        {"CREDIT",   "SIGCREDI"},
-        {"HELP1",    "SIGHELP1"},
-        {"TITLEPIC", "SIGTITLE"},
-        {"DEHACKED", "SIG_DEH"},
-        {"DEMO1",    "SIGDEMO1"},
-        {"DEMO2",    "SIGDEMO2"},
-        {"DEMO3",    "SIGDEMO3"},
-        {"DEMO4",    "SIGDEMO4"},
-        {"D_INTER",  "D_SIGINT"},
-        {"D_INTRO",  "D_SIGTIT"},
-    };
-
-    const char *const texture_files[] = {
-        "PNAMES",
-        "TEXTURE1",
-        "TEXTURE2",
-    };
-
-    // [crispy] don't load SIGIL.wad if another PWAD already provides E5M1
-    i = W_CheckNumForName("E5M1");
-    if (i != -1)
-    {
-        return;
-    }
-
-    // [crispy] don't load SIGIL.wad if SIGIL_COMPAT.wad is already loaded
-    i = W_CheckNumForName("E3M1");
-    if (i != -1 && !strncasecmp(W_WadNameForLump(lumpinfo[i]), "SIGIL_COMPAT", 12))
-    {
-        return;
-    }
-
-    // [crispy] don't load SIGIL.wad if another PWAD already modifies the texture files
-    for (i = 0; i < arrlen(texture_files); i++)
-    {
-        int j;
-
-        j = W_CheckNumForName(texture_files[i]);
-
-        if (j != -1 && !W_IsIWADLump(lumpinfo[j]))
-        {
-            return;
-        }
-    }
-
-    if (gameversion == exe_ultimate)
-    {
-        const char *const sigil_wads[] = {
-            "SIGIL_v1_21.wad",
-            "SIGIL_v1_2.wad",
-            "SIGIL.wad"
-        };
-        char *sigil_wad = NULL, *sigil_shreds = NULL;
-        char *dirname;
-
-        dirname = M_DirName(iwadfile);
-        sigil_shreds = M_StringJoin(dirname, DIR_SEPARATOR_S, "SIGIL_SHREDS.wad", NULL);
-
-        // [crispy] load SIGIL.WAD
-        for (i = 0; i < arrlen(sigil_wads); i++)
-        {
-            sigil_wad = M_StringJoin(dirname, DIR_SEPARATOR_S, sigil_wads[i], NULL);
-
-            if (M_FileExists(sigil_wad))
-            {
-                break;
-            }
-
-            free(sigil_wad);
-            sigil_wad = D_FindWADByName(sigil_wads[i]);
-
-            if (sigil_wad)
-            {
-                break;
-            }
-        }
-        free(dirname);
-
-        if (sigil_wad == NULL)
-        {
-            free(sigil_shreds);
-            return;
-        }
-
-        printf(" [expansion]");
-        D_AddFile(sigil_wad);
-        free(sigil_wad);
-
-        // [crispy] load SIGIL_SHREDS.WAD
-        if (!M_FileExists(sigil_shreds))
-        {
-            free(sigil_shreds);
-            sigil_shreds = D_FindWADByName("SIGIL_SHREDS.wad");
-        }
-
-        if (sigil_shreds != NULL)
-        {
-            printf(" [expansion]");
-            D_AddFile(sigil_shreds);
-            free(sigil_shreds);
-        }
-
-        // [crispy] rename intrusive SIGIL_SHREDS.wad music lumps out of the way
-        for (i = 0; i < arrlen(sigil_lumps); i++)
-        {
-            int j;
-
-            // [crispy] skip non-music lumps
-            if (strncasecmp(sigil_lumps[i].name, "D_", 2))
-            {
-                continue;
-            }
-
-            j = W_CheckNumForName(sigil_lumps[i].name);
-
-            if (j != -1 && !strncasecmp(W_WadNameForLump(lumpinfo[j]), "SIGIL_SHREDS", 12))
-            {
-                memcpy(lumpinfo[j]->name, sigil_lumps[i].new_name, 8);
-            }
-        }
-
-        // [crispy] rename intrusive SIGIL.wad graphics, demos and music lumps out of the way
-        for (i = 0; i < arrlen(sigil_lumps); i++)
-        {
-            int j;
-
-            j = W_CheckNumForName(sigil_lumps[i].name);
-
-            if (j != -1 && !strncasecmp(W_WadNameForLump(lumpinfo[j]), "SIGIL", 5))
-            {
-                memcpy(lumpinfo[j]->name, sigil_lumps[i].new_name, 8);
-            }
-        }
-
-        // [crispy] regenerate the hashtable
-        W_GenerateHashTable();
-    }
-}
-
-// [crispy] support loading NERVE.WAD alongside DOOM2.WAD
-static void LoadNerveWad(void)
-{
-    int i, j, k;
-
-    if (gamemission != doom2)
-        return;
-
-    if ((i = W_GetNumForName("map01")) != -1 &&
-        (j = W_GetNumForName("map09")) != -1 &&
-        !strcasecmp(W_WadNameForLump(lumpinfo[i]), "nerve.wad") &&
-        !strcasecmp(W_WadNameForLump(lumpinfo[j]), "nerve.wad"))
-    {
-	gamemission = pack_nerve;
-	DEH_AddStringReplacement ("TITLEPIC", "INTERPIC");
-    }
-    else
-    // [crispy] The "New Game -> Which Expansion" menu is only shown if the
-    // menu graphics lumps are available and (a) if they are from the IWAD
-    // and that is the BFG Edition DOOM2.WAD or (b) if they are from a PWAD.
-    if ((i = W_CheckNumForName("M_EPI1")) != -1 &&
-        (j = W_CheckNumForName("M_EPI2")) != -1 &&
-        (k = W_CheckNumForName("M_EPISOD")) != -1 &&
-        (gamevariant == bfgedition ||
-        (!W_IsIWADLump(lumpinfo[i]) &&
-         !W_IsIWADLump(lumpinfo[j]) &&
-         !W_IsIWADLump(lumpinfo[k]))))
-    {
-        if (strrchr(iwadfile, DIR_SEPARATOR) != NULL)
-        {
-            char *dir;
-            dir = M_DirName(iwadfile);
-            nervewadfile = M_StringJoin(dir, DIR_SEPARATOR_S, "nerve.wad", NULL);
-            free(dir);
-        }
-        else
-        {
-            nervewadfile = M_StringDuplicate("nerve.wad");
-        }
-
-        if (!M_FileExists(nervewadfile))
-        {
-            free(nervewadfile);
-            nervewadfile = D_FindWADByName("nerve.wad");
-        }
-
-        if (nervewadfile == NULL)
-        {
-            return;
-        }
-
-        printf(" [expansion]");
-        D_AddFile(nervewadfile);
-
-        // [crispy] rename level name patch lumps out of the way
-        for (i = 0; i < 9; i++)
-        {
-            char lumpname[9];
-
-            M_snprintf (lumpname, 9, "CWILV%2.2d", i);
-            lumpinfo[W_GetNumForName(lumpname)]->name[0] = 'N';
-        }
-
-        // [crispy] regenerate the hashtable
-        W_GenerateHashTable();
-    }
-}
-
-// [crispy] support loading MASTERLEVELS.WAD alongside DOOM2.WAD
-static void LoadMasterlevelsWad(void)
-{
-    int i, j;
-
-    if (gamemission != doom2)
-        return;
-
-    if ((i = W_GetNumForName("map01")) != -1 &&
-        (j = W_GetNumForName("map21")) != -1 &&
-        !strcasecmp(W_WadNameForLump(lumpinfo[i]), "masterlevels.wad") &&
-        !strcasecmp(W_WadNameForLump(lumpinfo[j]), "masterlevels.wad"))
-    {
-	gamemission = pack_master;
     }
 }
 
@@ -1952,6 +1749,42 @@ void D_DoomMain (void)
 	}
     }
 
+    //!
+    // @arg <file>
+    // @category mod
+    //
+    // [crispy] experimental feature: dump lump data into a new LMP file <file>
+    //
+
+    p = M_CheckParm("-lumpdump");
+
+    if (p)
+    {
+	p = M_CheckParmWithArgs("-lumpdump", 1);
+
+	if (p)
+	{
+	    int dumped;
+
+	    M_StringCopy(file, myargv[p+1], sizeof(file));
+
+	    dumped = W_LumpDump(file);
+
+	    if (dumped < 0)
+	    {
+		I_Error("W_LumpDump: Failed to write lump '%s'.", file);
+	    }
+	    else
+	    {
+		I_Error("W_LumpDump: Dumped lump into file '%s.lmp'.", file);
+	    }
+	}
+	else
+	{
+	    I_Error("W_LumpDump: The '-lumpdump' parameter requires an argument.");
+	}
+    }
+
     // Debug:
 //    W_PrintDirectory();
 
@@ -2022,9 +1855,16 @@ void D_DoomMain (void)
     // [crispy] allow overriding of special-casing
     if (!M_ParmExists("-noautoload") && gamemode != shareware)
     {
-	LoadMasterlevelsWad();
-	LoadNerveWad();
-	LoadSigilWad();
+	if (gamemode == retail)
+	{
+		D_LoadSigilWad();
+	}
+
+	if (gamemission == doom2)
+	{
+		D_LoadNerveWad();
+		D_LoadMasterlevelsWad();
+	}
     }
 
     // Load DEHACKED lumps from WAD files - but only if we give the right

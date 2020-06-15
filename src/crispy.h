@@ -41,6 +41,7 @@ typedef struct
 	int automapstats;
 	int bobfactor;
 	int brightmaps;
+	int btusetimer;
 	int centerweapon;
 	int coloredblood;
 	int coloredhud;
@@ -67,6 +68,7 @@ typedef struct
 	int recoil;
 	int secretmessage;
 	int smoothlight;
+	int smoothmap;
 	int smoothscaling;
 	int soundfix;
 	int soundfull;
@@ -78,6 +80,7 @@ typedef struct
 	int uncapped;
 	int vsync;
 	int weaponsquat;
+	int widescreen;
 
 	// [crispy] in-game switches and variables
 	int screenshotmsg;
@@ -94,6 +97,9 @@ typedef struct
 	boolean havessg;
 	boolean singleplayer;
 	boolean stretchsky;
+
+	char *havenerve;
+	char *havemaster;
 
 	const char *sdlversion;
 	const char *platform;
@@ -112,14 +118,6 @@ enum
 	REINIT_RENDERER = 2,
 	REINIT_TEXTURES = 4,
 	REINIT_ASPECTRATIO = 8,
-};
-
-enum
-{
-    ASPECTRATIO_OFF,
-    ASPECTRATIO_4_3,
-    ASPECTRATIO_16_10,
-    NUM_ASPECTRATIOS,
 };
 
 enum

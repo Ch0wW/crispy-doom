@@ -45,6 +45,7 @@
 #include "s_sound.h"
 #include "w_main.h"
 #include "v_video.h"
+#include "v_trans.h" // [crispy] dp_translation
 
 #define CT_KEY_GREEN    'g'
 #define CT_KEY_YELLOW   'y'
@@ -132,6 +133,29 @@ void DrawMessage(void)
 
 //---------------------------------------------------------------------------
 //
+// PROC DrawCenterMessage
+//
+// [crispy]
+//
+//---------------------------------------------------------------------------
+
+void DrawCenterMessage(void)
+{
+    player_t* player;
+
+    player = &players[consoleplayer];
+    if (player->centerMessageTics <= 0 || !player->centerMessage)
+    {                           // No message
+        return;
+    }
+    // Place message above quit game message position so they don't overlap
+    dp_translation = cr[CR_GOLD];
+    MN_DrTextA(player->centerMessage, 160 - MN_TextAWidth(player->centerMessage) / 2, 70);
+    dp_translation = NULL;
+}
+
+//---------------------------------------------------------------------------
+//
 // PROC D_Display
 //
 // Draw current display, possibly wiping it from the previous.
@@ -188,6 +212,27 @@ static void CrispyDrawStats (void)
     }
 }
 
+// [crispy] Draw the current FPS if show fps cheat is active
+static void CrispyDrawFps(void)
+{
+    short coord_x, height;
+    char str[32];
+    player_t* const player = &players[consoleplayer];
+
+    const int FontABaseLump = W_GetNumForName(DEH_String("FONTA_S")) + 1;
+    const patch_t* const p = W_CacheLumpNum(FontABaseLump + 'A' - 33, PU_CACHE);
+
+    height = SHORT(p->height) + 1;
+    coord_x = ORIGWIDTH - 6 * SHORT(p->width);
+
+    // [crispy] Only show FPS outside automap as it could obscure level coords
+    if (player->cheats & CF_SHOWFPS && !automapactive)
+    {
+        M_snprintf(str, sizeof(str), "%d F", crispy->fps);
+        MN_DrTextA(str, coord_x, height);
+    }
+}
+
 void R_ExecuteSetViewSize(void);
 
 extern boolean finalestage;
@@ -218,6 +263,7 @@ void D_Display(void)
             UpdateState |= I_FULLVIEW;
             SB_Drawer();
             CrispyDrawStats();
+            CrispyDrawFps();
             break;
         case GS_INTERMISSION:
             IN_Drawer();
@@ -249,6 +295,9 @@ void D_Display(void)
     }
     // Handle player messages
     DrawMessage();
+
+    // [crispy] Handle centered player messages
+    DrawCenterMessage();
 
     // Menu drawing
     MN_Drawer();
@@ -310,6 +359,15 @@ void D_DoomLoop(void)
         // Move positional sounds
         S_UpdateSounds(players[consoleplayer].mo);
         D_Display();
+
+        // [crispy] post-rendering function pointer to apply config changes
+        // that affect rendering and that are better applied after the current
+        // frame has finished rendering
+        if (crispy->post_rendering_hook)
+        {
+            crispy->post_rendering_hook();
+            crispy->post_rendering_hook = NULL;
+        }
     }
 }
 
@@ -750,9 +808,14 @@ void D_BindVariables(void)
     }
 
     // [crispy] bind "crispness" config variables
+    M_BindIntVariable("crispy_hires",           &crispy->hires);
+    M_BindIntVariable("crispy_smoothscaling",   &crispy->smoothscaling);
     M_BindIntVariable("crispy_automapstats",    &crispy->automapstats);
     M_BindIntVariable("crispy_leveltime",       &crispy->leveltime);
     M_BindIntVariable("crispy_playercoords",    &crispy->playercoords);
+    M_BindIntVariable("crispy_secretmessage",   &crispy->secretmessage);
+    M_BindIntVariable("crispy_uncapped",        &crispy->uncapped);
+    M_BindIntVariable("crispy_vsync",           &crispy->vsync);
 }
 
 // 
@@ -1039,11 +1102,12 @@ void D_DoomMain(void)
     //!
     // @category demo
     //
-    // Record or playback a demo without automatically quitting
+    // Record or playback a demo, automatically quitting
     // after either level exit or player respawn.
     //
 
-    demoextend = M_ParmExists("-demoextend");
+    demoextend = (!M_ParmExists("-nodemoextend"));
+    //[crispy] make demoextend the default
 
     if (W_CheckNumForName(DEH_String("E2M1")) == -1)
     {
