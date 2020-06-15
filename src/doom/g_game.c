@@ -136,7 +136,7 @@ int             totalleveltimes;        // [crispy] CPhipps - total time for all
 int             demostarttic;           // [crispy] fix revenant internal demo bug
  
 char           *demoname;
-char           *orig_demoname; // [crispy] the name originally chosen for the demo, i.e. without "-00000"
+const char     *orig_demoname; // [crispy] the name originally chosen for the demo, i.e. without "-00000"
 boolean         demorecording; 
 boolean         longtics;               // cph's doom 1.91 longtics hack
 boolean         lowres_turn;            // low resolution turning for longtics
@@ -819,10 +819,21 @@ void G_DoLoadLevel (void)
 
         if (gamemap < 12)
         {
+            if ((gameepisode == 2 || gamemission == pack_nerve) && gamemap >= 4 && gamemap <= 8)
+                skytexturename = "SKY3";
+            else
             skytexturename = "SKY1";
         }
         else if (gamemap < 21)
         {
+            // [crispy] BLACKTWR (MAP25) and TEETH (MAP31 and MAP32)
+            if ((gameepisode == 3 || gamemission == pack_master) && gamemap >= 19)
+                skytexturename = "SKY3";
+            else
+            // [crispy] BLOODSEA and MEPHISTO (both MAP07)
+            if ((gameepisode == 3 || gamemission == pack_master) && (gamemap == 14 || gamemap == 15))
+                skytexturename = "SKY1";
+            else
             skytexturename = "SKY2";
         }
         else
@@ -1323,7 +1334,8 @@ void G_PlayerFinishLevel (int player)
     p->centering =
     p->jumpTics =
     p->recoilpitch = p->oldrecoilpitch =
-    p->psp_dy_max = 0;
+    p->psp_dy_max =
+    p->btuse = p->btuse_tics = 0;
 } 
  
 
@@ -2276,6 +2288,12 @@ G_InitNew
     if (skill > sk_nightmare)
 	skill = sk_nightmare;
 
+  // [crispy] if NRFTL is not available, "episode 2" may mean The Master Levels ("episode 3")
+  if (gamemode == commercial && episode == 2 && !crispy->havenerve)
+  {
+    episode = crispy->havemaster ? 3 : 1;
+  }
+
   // [crispy] only fix episode/map if it doesn't exist
   if (P_GetNumForMap(episode, map, false) < 0)
   {
@@ -2575,7 +2593,7 @@ void G_WriteDemoTiccmd (ticcmd_t* cmd)
 //
 // G_RecordDemo
 //
-void G_RecordDemo (char *name)
+void G_RecordDemo (const char *name)
 {
     size_t demoname_size;
     int i;

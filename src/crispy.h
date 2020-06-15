@@ -41,6 +41,7 @@ typedef struct
 	int automapstats;
 	int bobfactor;
 	int brightmaps;
+	int btusetimer;
 	int centerweapon;
 	int coloredblood;
 	int coloredhud;
@@ -67,6 +68,7 @@ typedef struct
 	int recoil;
 	int secretmessage;
 	int smoothlight;
+	int smoothmap;
 	int smoothscaling;
 	int soundfix;
 	int soundfull;
@@ -95,6 +97,9 @@ typedef struct
 	boolean havessg;
 	boolean singleplayer;
 	boolean stretchsky;
+
+	char *havenerve;
+	char *havemaster;
 
 	const char *sdlversion;
 	const char *platform;

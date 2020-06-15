@@ -135,16 +135,12 @@ multiitem_t multiitem_widgets[NUM_WIDGETS] =
     {WIDGETS_ALWAYS, "always"},
 };
 
-extern void AM_ReInit (void);
+extern void AM_LevelInit (boolean reinit);
 extern void EnableLoadingDisk (void);
 extern void P_SegLengths (boolean contrast_only);
 extern void R_ExecuteSetViewSize (void);
 extern void R_InitLightTables (void);
 extern void I_ReInitGraphics (int reinit);
-extern void ST_createWidgets(void);
-extern void HU_Start(void);
-extern void M_SizeDisplay(int choice);
-
 
 void M_CrispyToggleAutomapstats(int choice)
 {
@@ -176,7 +172,6 @@ void M_CrispyToggleColoredblood(int choice)
 
     if (gameversion == exe_chex)
     {
-	S_StartSound(NULL,sfx_oof);
 	return;
     }
 
@@ -233,7 +228,6 @@ void M_CrispyToggleCrosshairtype(int choice)
 {
     if (!crispy->crosshair)
     {
-	S_StartSound(NULL,sfx_oof);
 	return;
     }
 
@@ -262,12 +256,17 @@ void M_CrispyToggleDemoTimerDir(int choice)
 {
     if (!(crispy->demotimer & DEMOTIMER_PLAYBACK))
     {
-	S_StartSound(NULL,sfx_oof);
 	return;
     }
 
     choice = 0;
     crispy->demotimerdir = !crispy->demotimerdir;
+}
+
+void M_CrispyToggleDemoUseTimer(int choice)
+{
+    choice = 0;
+    crispy->btusetimer = !crispy->btusetimer;
 }
 
 void M_CrispyToggleExtAutomap(int choice)
@@ -286,7 +285,6 @@ void M_CrispyToggleFlipcorpses(int choice)
 {
     if (gameversion == exe_chex)
     {
-	S_StartSound(NULL,sfx_oof);
 	return;
     }
 
@@ -298,7 +296,6 @@ void M_CrispyToggleFreeaim(int choice)
 {
     if (!crispy->singleplayer)
     {
-	S_StartSound(NULL,sfx_oof);
 	return;
     }
 
@@ -353,7 +350,7 @@ static void M_CrispyToggleHiresHook (void)
     // [crispy] re-calculate disk icon coordinates
     EnableLoadingDisk();
     // [crispy] re-calculate automap coordinates
-    AM_ReInit();
+    AM_LevelInit(true);
 }
 
 void M_CrispyToggleHires(int choice)
@@ -367,7 +364,6 @@ void M_CrispyToggleJumping(int choice)
 {
     if (!crispy->singleplayer)
     {
-	S_StartSound(NULL,sfx_oof);
 	return;
     }
 
@@ -402,7 +398,6 @@ void M_CrispyToggleOverunder(int choice)
 {
     if (!crispy->singleplayer)
     {
-	S_StartSound(NULL,sfx_oof);
 	return;
     }
 
@@ -431,7 +426,6 @@ void M_CrispyToggleRecoil(int choice)
 {
     if (!crispy->singleplayer)
     {
-	S_StartSound(NULL,sfx_oof);
 	return;
     }
 
@@ -472,6 +466,15 @@ void M_CrispyToggleSmoothLighting(int choice)
 
     crispy->post_rendering_hook = M_CrispyToggleSmoothLightingHook;
 }
+
+void M_CrispyToggleSmoothMap(int choice)
+{
+    choice = 0;
+    crispy->smoothmap = !crispy->smoothmap;
+    // Update function pointer used to draw lines
+    AM_LevelInit(true);
+}
+
 
 void M_CrispyToggleSndChannels(int choice)
 {
@@ -520,7 +523,6 @@ void M_CrispyToggleVsync(int choice)
 
     if (force_software_renderer)
     {
-	S_StartSound(NULL,sfx_oof);
 	return;
     }
 
@@ -537,25 +539,18 @@ static void M_CrispyToggleWidescreenHook (void)
 {
     crispy->widescreen = !crispy->widescreen;
 
-    // [crispy] re-initialize screenSize_min
-    M_SizeDisplay(-1);
-    // [crispy] re-initialize framebuffers, textures and renderer
-    I_ReInitGraphics(REINIT_FRAMEBUFFERS | REINIT_TEXTURES | REINIT_ASPECTRATIO);
-    // [crispy] re-calculate framebuffer coordinates
-    R_ExecuteSetViewSize();
-    // [crispy] re-draw bezel
-    R_FillBackScreen();
-    // [crispy] re-calculate disk icon coordinates
-    EnableLoadingDisk();
-    // [crispy] re-calculate automap coordinates
-    AM_ReInit();
-
-    if (gamestate == GS_LEVEL && gamemap > 0)
+    // [crispy] no need to re-init when switching from wide to compact
     {
-	// [crispy] re-arrange status bar widgets
-	ST_createWidgets();
-	// [crispy] re-arrange heads-up widgets
-	HU_Start();
+	// [crispy] re-initialize framebuffers, textures and renderer
+	I_ReInitGraphics(REINIT_FRAMEBUFFERS | REINIT_TEXTURES | REINIT_ASPECTRATIO);
+	// [crispy] re-calculate framebuffer coordinates
+	R_ExecuteSetViewSize();
+	// [crispy] re-draw bezel
+	R_FillBackScreen();
+	// [crispy] re-calculate disk icon coordinates
+	EnableLoadingDisk();
+	// [crispy] re-calculate automap coordinates
+	AM_LevelInit(true);
     }
 }
 

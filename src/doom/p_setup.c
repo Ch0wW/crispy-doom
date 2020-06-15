@@ -20,6 +20,7 @@
 
 
 #include <math.h>
+#include <stdlib.h>
 
 #include "z_zone.h"
 
@@ -221,12 +222,17 @@ void P_LoadSegs (int lump)
 	li->linedef = ldef;
 	side = SHORT(ml->side);
 
-        // e6y: check for wrong indexes
-        if ((unsigned)ldef->sidenum[side] >= (unsigned)numsides)
-        {
-            I_Error("P_LoadSegs: linedef %d for seg %d references a non-existent sidedef %d",
-                    linedef, i, (unsigned)ldef->sidenum[side]);
-        }
+	// e6y: check for wrong indexes
+	if ((unsigned)linedef >= (unsigned)numlines)
+	{
+		I_Error("P_LoadSegs: seg %d references a non-existent linedef %d",
+			i, (unsigned)linedef);
+	}
+	if ((unsigned)ldef->sidenum[side] >= (unsigned)numsides)
+	{
+		I_Error("P_LoadSegs: linedef %d for seg %d references a non-existent sidedef %d",
+			linedef, i, (unsigned)ldef->sidenum[side]);
+	}
 
 	li->sidedef = &sides[ldef->sidenum[side]];
 	li->frontsector = sides[ldef->sidenum[side]].sector;
@@ -553,7 +559,7 @@ void P_LoadLineDefs (int lump)
 	ld->flags = (unsigned short)SHORT(mld->flags); // [crispy] extended nodes
 	ld->special = SHORT(mld->special);
 	// [crispy] warn about unknown linedef types
-	if ((unsigned short) ld->special > 141)
+	if ((unsigned short) ld->special > 141 && ld->special != 271 && ld->special != 272)
 	{
 	    fprintf(stderr, "P_LoadLineDefs: Unknown special %d at line %d.\n", ld->special, i);
 	    warn++;
@@ -1035,8 +1041,7 @@ const char *skilltable[] =
 // [crispy] factor out map lump name and number finding into a separate function
 int P_GetNumForMap (int episode, int map, boolean critical)
 {
-    char	lumpname[9];
-    int		lumpnum;
+    char lumpname[9];
 
     // find map name
     if ( gamemode == commercial)
@@ -1057,16 +1062,21 @@ int P_GetNumForMap (int episode, int map, boolean critical)
 
     // [crispy] special-casing for E1M10 "Sewers" support
     if (crispy->havee1m10 && episode == 1 && map == 10)
-	DEH_snprintf(lumpname, 9, "E1M10");
-
-    lumpnum = critical ? W_GetNumForName (lumpname) : W_CheckNumForName (lumpname);
-
-    if (nervewadfile && episode != 2 && map <= 9)
     {
-        lumpnum = W_CheckNumForNameFromTo (lumpname, lumpnum - 1, 0);
+	DEH_snprintf(lumpname, 9, "E1M10");
     }
 
-    return lumpnum;
+    // [crispy] NRFTL / The Master Levels
+    if (crispy->havenerve && episode == 2 && map <= 9)
+    {
+	strcat(lumpname, "N");
+    }
+    if (crispy->havemaster && episode == 3 && map <= 21)
+    {
+	strcat(lumpname, "M");
+    }
+
+    return critical ? W_GetNumForName(lumpname) : W_CheckNumForName(lumpname);
 }
 
 // pointer to the current map lump info struct
@@ -1098,10 +1108,15 @@ P_SetupLevel
 	    = players[i].itemcount = 0;
     }
 
-    // [crispy] No Rest for the Living ...
-    if (nervewadfile)
+    // [crispy] NRFTL / The Master Levels
+    if (crispy->havenerve || crispy->havemaster)
     {
-        if (episode == 2)
+        if (crispy->havemaster && episode == 3)
+        {
+            gamemission = pack_master;
+        }
+        else
+        if (crispy->havenerve && episode == 2)
         {
             gamemission = pack_nerve;
         }
@@ -1112,6 +1127,11 @@ P_SetupLevel
     }
     else
     {
+        if (gamemission == pack_master)
+        {
+            episode = gameepisode = 3;
+        }
+        else
         if (gamemission == pack_nerve)
         {
             episode = gameepisode = 2;

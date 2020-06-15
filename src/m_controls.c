@@ -70,6 +70,7 @@ int key_arti_chaosdevice = 0;
 int key_arti_shadowsphere = 0;
 int key_arti_wings = 0;
 int key_arti_torch = 0;
+int key_arti_morph = 0;
 
 //
 // Hexen key controls
@@ -125,7 +126,8 @@ int mousebreverse = -1; // [crispy]
 
 int mousebprevweapon = 4; // [crispy]
 int mousebnextweapon = 3; // [crispy]
-
+int mousebinvleft = -1;
+int mousebinvright = -1;
 
 int key_message_refresh = KEY_ENTER;
 int key_pause = KEY_PAUSE;
@@ -297,6 +299,9 @@ void M_BindHereticControls(void)
     M_BindIntVariable("key_invright",       &key_invright);
     M_BindIntVariable("key_useartifact",    &key_useartifact);
 
+    M_BindIntVariable("mouseb_invleft", &mousebinvleft);
+    M_BindIntVariable("mouseb_invright", &mousebinvright);
+
     M_BindIntVariable("key_arti_quartz",        &key_arti_quartz);
     M_BindIntVariable("key_arti_urn",           &key_arti_urn);
     M_BindIntVariable("key_arti_bomb",          &key_arti_bomb);
@@ -306,6 +311,7 @@ void M_BindHereticControls(void)
     M_BindIntVariable("key_arti_shadowsphere",  &key_arti_shadowsphere);
     M_BindIntVariable("key_arti_wings",         &key_arti_wings);
     M_BindIntVariable("key_arti_torch",         &key_arti_torch);
+    M_BindIntVariable("key_arti_morph",         &key_arti_morph);
 }
 
 void M_BindHexenControls(void)

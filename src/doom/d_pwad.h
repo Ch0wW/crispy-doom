@@ -1,6 +1,7 @@
 //
 // Copyright(C) 1993-1996 Id Software, Inc.
 // Copyright(C) 2005-2014 Simon Howard
+// Copyright(C) 2020 Fabian Greffrath
 //
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -13,23 +14,16 @@
 // GNU General Public License for more details.
 //
 // DESCRIPTION:
-//	Put all global tate variables here.
+//	Auto-loading of (semi-)official PWAD expansions, i.e.
+//	Sigil, No Rest for the Living and The Master Levels
 //
 
-#include <stdio.h>
+#ifndef __D_PWAD__
+#define __D_PWAD__
 
-#include "doomstat.h"
+void D_LoadSigilWad(void);
+void D_LoadNerveWad(void);
+void D_LoadMasterlevelsWad(void);
 
-
-// Game Mode - identify IWAD as shareware, retail etc.
-GameMode_t gamemode = indetermined;
-GameMission_t	gamemission = doom;
-GameVersion_t   gameversion = exe_final2;
-GameVariant_t   gamevariant = vanilla;
-
-// Set if homebrew PWAD stuff has been added.
-boolean	modifiedgame;
-
-
-
+#endif
 

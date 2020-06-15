@@ -31,6 +31,7 @@
 #include "r_local.h"
 #include "s_sound.h"
 #include "v_video.h"
+#include "v_trans.h" // [crispy] dp_translation
 
 // Macros
 
@@ -104,10 +105,14 @@ static boolean SCSaveGame(int option);
 static boolean SCMessages(int option);
 static boolean SCEndGame(int option);
 static boolean SCInfo(int option);
+static boolean CrispyHires(int option);
 static boolean CrispySmoothing(int option);
 static boolean CrispyAutomapStats(int option);
 static boolean CrispyLevelTime(int option);
 static boolean CrispyPlayerCoords(int option);
+static boolean CrispySecretMessage(int option);
+static boolean CrispyUncapped(int option);
+static boolean CrispyVsync(int option);
 static void DrawMainMenu(void);
 static void DrawEpisodeMenu(void);
 static void DrawSkillMenu(void);
@@ -122,10 +127,18 @@ static void DrawSlider(Menu_t * menu, int item, int width, int slot);
 static void DrawCrispnessMenu(void);
 void MN_LoadSlotText(void);
 
+// External Functions
+
+extern void I_ReInitGraphics(int reinit);
+extern void R_ExecuteSetViewSize(void);
+extern void AM_LevelInit(void);
+extern void AM_initVariables(void);
+
 // External Data
 
 extern int detailLevel;
 extern int screenblocks;
+extern boolean automapactive;
 
 // Public Data
 
@@ -287,18 +300,22 @@ static Menu_t Options2Menu = {
 };
 
 static MenuItem_t CrispnessItems[] = {
+    {ITT_LRFUNC, "HIGH RESOLUTION RENDERING:", CrispyHires, 0, MENU_NONE},
     {ITT_LRFUNC, "SMOOTH PIXEL SCALING:", CrispySmoothing, 0, MENU_NONE},
+    {ITT_LRFUNC, "UNCAPPED FRAMERATE:", CrispyUncapped, 0, MENU_NONE},
+    {ITT_LRFUNC, "ENABLE VSYNC:", CrispyVsync, 0, MENU_NONE},
     {ITT_EMPTY, NULL, NULL, 0, MENU_NONE},
     {ITT_EMPTY, NULL, NULL, 0, MENU_NONE},
     {ITT_LRFUNC, "SHOW LEVEL STATS:", CrispyAutomapStats, 0, MENU_NONE},
     {ITT_LRFUNC, "SHOW LEVEL TIME:", CrispyLevelTime, 0, MENU_NONE},
-    {ITT_LRFUNC, "SHOW PLAYER COORDS:", CrispyPlayerCoords, 0, MENU_NONE}
+    {ITT_LRFUNC, "SHOW PLAYER COORDS:", CrispyPlayerCoords, 0, MENU_NONE},
+    {ITT_LRFUNC, "REPORT REVEALED SECRETS:", CrispySecretMessage, 0, MENU_NONE},
 };
 
 static Menu_t CrispnessMenu = {
     68, 40,
     DrawCrispnessMenu,
-    6, CrispnessItems,
+    10, CrispnessItems,
     0,
     MENU_OPTIONS
 };
@@ -985,7 +1002,8 @@ static boolean SCMouseSensi(int option)
 {
     if (option == RIGHT_DIR)
     {
-        if (mouseSensitivity < 9)
+        // [crispy] remove mouse sensitivity limit
+        if (mouseSensitivity < 255)
         {
             mouseSensitivity++;
         }
@@ -1090,9 +1108,53 @@ static boolean SCInfo(int option)
 //
 //---------------------------------------------------------------------------
 
+static void CrispyHiresHook(void)
+{
+    crispy->hires = !crispy->hires;
+    // [crispy] re-initialize framebuffers, textures and renderer
+    I_ReInitGraphics(REINIT_FRAMEBUFFERS | REINIT_TEXTURES | REINIT_ASPECTRATIO);
+    // [crispy] re-calculate framebuffer coordinates
+    R_ExecuteSetViewSize();
+    // [crispy] scale the sky for new resolution
+    R_InitSkyMap();
+    // [crispy] re-calculate automap coordinates
+    AM_LevelInit();
+    if (automapactive) {
+        AM_initVariables();
+    }
+    // [crispy] refresh the status bar
+    SB_state = -1;
+}
+
+static boolean CrispyHires(int option)
+{
+    crispy->post_rendering_hook = CrispyHiresHook;
+
+    return true;
+}
+
 static boolean CrispySmoothing(int option)
 {
     crispy->smoothscaling = !crispy->smoothscaling;
+    return true;
+}
+
+static boolean CrispyUncapped(int option)
+{
+    crispy->uncapped = !crispy->uncapped;
+    return true;
+}
+
+static void CrispyVsyncHook(void)
+{
+    crispy->vsync = !crispy->vsync;
+    I_ReInitGraphics(REINIT_RENDERER | REINIT_TEXTURES | REINIT_ASPECTRATIO);
+}
+
+static boolean CrispyVsync(int option)
+{
+    crispy->post_rendering_hook = CrispyVsyncHook;
+
     return true;
 }
 
@@ -1114,6 +1176,12 @@ static boolean CrispyPlayerCoords(int option)
     return true;
 }
 
+static boolean CrispySecretMessage(int option)
+{
+    crispy->secretmessage = (crispy->secretmessage + 1) % NUM_SECRETMESSAGE; // [crispy] enable secret message
+    return true;
+}
+
 //---------------------------------------------------------------------------
 //
 // FUNC MN_Responder
@@ -1126,7 +1194,6 @@ boolean MN_Responder(event_t * event)
     int key;
     int i;
     MenuItem_t *item;
-    extern boolean automapactive;
     extern void D_StartTitle(void);
     extern void G_CheckDemoStatus(void);
     char *textBuffer;
@@ -1608,9 +1675,10 @@ boolean MN_Responder(event_t * event)
         {
             if (slotptr)
             {
-                *textBuffer-- = 0;
-                *textBuffer = ASCII_CURSOR;
+                *textBuffer = 0;
                 slotptr--;
+                textBuffer = &SlotText[currentSlot][slotptr];
+                *textBuffer = ASCII_CURSOR;
             }
             return (true);
         }
@@ -1763,6 +1831,7 @@ static void DrawSlider(Menu_t * menu, int item, int width, int slot)
     int y;
     int x2;
     int count;
+    char	num[4];
 
     x = menu->x + 24;
     y = menu->y + 2 + (item * ITEM_HEIGHT);
@@ -1773,6 +1842,17 @@ static void DrawSlider(Menu_t * menu, int item, int width, int slot)
                                            : "M_SLDMD2"), PU_CACHE));
     }
     V_DrawPatch(x2, y, W_CacheLumpName(DEH_String("M_SLDRT"), PU_CACHE));
+
+    // [crispy] print the value
+    M_snprintf(num, 4, "%3d", slot);
+    MN_DrTextA(num, x2 + 32, y + 3);
+
+    // [crispy] do not crash anymore if the value is out of bounds
+    if (slot >= width)
+    {
+        slot = width - 1;
+    }
+
     V_DrawPatch(x + 4 + slot * 8, y + 7,
                 W_CacheLumpName(DEH_String("M_SLDKB"), PU_CACHE));
 }
@@ -1783,31 +1863,84 @@ static void DrawSlider(Menu_t * menu, int item, int width, int slot)
 //
 //---------------------------------------------------------------------------
 
+static void M_DrawCrispnessBackground(void)
+{
+    byte *src, *dest;
+    int x, y;
+
+    if (gamemode == shareware)
+    {
+        src = W_CacheLumpName(DEH_String("FLOOR04"), PU_CACHE);
+    }
+    else
+    {
+        src = W_CacheLumpName(DEH_String("FLAT513"), PU_CACHE);
+    }
+    dest = I_VideoBuffer;
+
+    for (y = 0; y < SCREENHEIGHT; y++)
+    {
+        for (x = 0; x < SCREENWIDTH / 64; x++)
+        {
+            memcpy(dest, src + ((y & 63) << 6), 64);
+            dest += 64;
+        }
+        if (SCREENWIDTH & 63)
+        {
+            memcpy(dest, src + ((y & 63) << 6), SCREENWIDTH & 63);
+            dest += (SCREENWIDTH & 63);
+        }
+    }
+
+    SB_state = -1;
+}
+
 static void DrawCrispnessMenu(void)
 {
     static const char *title;
+
+    // Background
+    M_DrawCrispnessBackground();
 
     // Title
     title = DEH_String("CRISPNESS");
     MN_DrTextB(title, 160 - MN_TextBWidth(title) / 2, 6);
 
     // Subheaders
+    dp_translation = cr[CR_GOLD];
     MN_DrTextA("RENDERING", 63, 30);
-    MN_DrTextA("NAVIGATIONAL", 63, 60);
+    MN_DrTextA("NAVIGATIONAL", 63, 90);
+    dp_translation = cr[CR_GREY];
+
+    // Hires rendering
+    MN_DrTextA(crispy->hires ? "ON" : "OFF", 254, 40);
 
     // Smooth pixel scaling
-    MN_DrTextA(crispy->smoothscaling ? "ON" : "OFF", 216, 40);
+    MN_DrTextA(crispy->smoothscaling ? "ON" : "OFF", 216, 50);
+
+    // Uncapped framerate
+    MN_DrTextA(crispy->uncapped ? "ON" : "OFF", 217, 60);
+
+    // Vsync
+    MN_DrTextA(crispy->vsync ? "ON" : "OFF", 167, 70);
 
     // Show level stats
     MN_DrTextA(crispy->automapstats == WIDGETS_OFF ? "NEVER" :
                crispy->automapstats == WIDGETS_AUTOMAP ? "IN AUTOMAP" :
-                                                         "ALWAYS", 190, 70);
+                                                         "ALWAYS", 190, 100);
 
     // Show level time
     MN_DrTextA(crispy->leveltime == WIDGETS_OFF ? "NEVER" :
                crispy->leveltime == WIDGETS_AUTOMAP ? "IN AUTOMAP" :
-                                                       "ALWAYS", 179, 80);
+                                                       "ALWAYS", 179, 110);
 
     // Show player coords
-    MN_DrTextA(crispy->playercoords == WIDGETS_OFF ? "NEVER" : "IN AUTOMAP", 211, 90);
+    MN_DrTextA(crispy->playercoords == WIDGETS_OFF ? "NEVER" : "IN AUTOMAP", 211, 120);
+
+    // Show secret message
+    MN_DrTextA(crispy->secretmessage == SECRETMESSAGE_OFF ? "OFF" :
+        crispy->secretmessage == SECRETMESSAGE_ON ? "ON" :
+        "COUNT", 250, 130);
+
+    dp_translation = NULL;
 }

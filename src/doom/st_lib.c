@@ -126,8 +126,8 @@ STlib_drawNum
     if (n->y - ST_Y < 0)
 	I_Error("drawNum: n->y - ST_Y < 0");
 
-    if (screenblocks < CRISPY_HUD || (automapactive && !crispy->automapoverlay && !crispy->widescreen))
-    V_CopyRect(x, n->y - ST_Y, st_backing_screen, w*numdigits, h, x, n->y);
+    if (screenblocks < CRISPY_HUD || (automapactive && !crispy->automapoverlay))
+    V_CopyRect(x + WIDESCREENDELTA, n->y - ST_Y, st_backing_screen, w*numdigits, h, x + WIDESCREENDELTA, n->y);
 
     // if non-number, do not draw it
     if (num == 1994)
@@ -176,6 +176,9 @@ STlib_initPercent
 {
     STlib_initNum(&p->n, x, y, pl, num, on, 3);
     p->p = percent;
+
+    // [crispy] remember previous colorization
+    p->oldtranslation = NULL;
 }
 
 
@@ -186,6 +189,12 @@ STlib_updatePercent
 ( st_percent_t*		per,
   int			refresh )
 {
+    // [crispy] remember previous colorization
+    if (per->oldtranslation != dp_translation)
+    {
+        refresh = true;
+        per->oldtranslation = dp_translation;
+    }
 
     STlib_updateNum(&per->n, refresh); // [crispy] moved here
 
@@ -243,8 +252,8 @@ STlib_updateMultIcon
 	    if (y - ST_Y < 0)
 		I_Error("updateMultIcon: y - ST_Y < 0");
 
-	    if (screenblocks < CRISPY_HUD || (automapactive && !crispy->automapoverlay && !crispy->widescreen))
-	    V_CopyRect(x, y-ST_Y, st_backing_screen, w, h, x, y);
+	    if (screenblocks < CRISPY_HUD || (automapactive && !crispy->automapoverlay))
+	    V_CopyRect(x + WIDESCREENDELTA, y-ST_Y, st_backing_screen, w, h, x + WIDESCREENDELTA, y);
 	}
 	V_DrawPatch(mi->x, mi->y, mi->p[*mi->inum]);
 	mi->oldinum = *mi->inum;
@@ -296,8 +305,8 @@ STlib_updateBinIcon
 	if (*bi->val)
 	    V_DrawPatch(bi->x, bi->y, bi->p);
 	else
-	    if (screenblocks < CRISPY_HUD || (automapactive && !crispy->automapoverlay && !crispy->widescreen))
-	    V_CopyRect(x, y-ST_Y, st_backing_screen, w, h, x, y);
+	    if (screenblocks < CRISPY_HUD || (automapactive && !crispy->automapoverlay))
+	    V_CopyRect(x + WIDESCREENDELTA, y-ST_Y, st_backing_screen, w, h, x + WIDESCREENDELTA, y);
 
 	bi->oldval = *bi->val;
     }

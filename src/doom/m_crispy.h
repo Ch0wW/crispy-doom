@@ -23,7 +23,7 @@
 typedef struct
 {
     int value;
-    char *name;
+    const char *name;
 } multiitem_t;
 
 extern multiitem_t multiitem_bobfactor[NUM_BOBFACTORS];
@@ -55,6 +55,7 @@ extern void M_CrispyToggleCrosshairtype(int choice);
 extern void M_CrispyToggleDemoBar(int choice);
 extern void M_CrispyToggleDemoTimer(int choice);
 extern void M_CrispyToggleDemoTimerDir(int choice);
+extern void M_CrispyToggleDemoUseTimer(int choice);
 extern void M_CrispyToggleExtAutomap(int choice);
 extern void M_CrispyToggleExtsaveg(int choice);
 extern void M_CrispyToggleFlipcorpses(int choice);
@@ -72,6 +73,7 @@ extern void M_CrispyTogglePlayerCoords(int choice);
 extern void M_CrispyToggleRecoil(int choice);
 extern void M_CrispyToggleSecretmessage(int choice);
 extern void M_CrispyToggleSmoothLighting(int choice);
+extern void M_CrispyToggleSmoothMap(int choice);
 extern void M_CrispyToggleSmoothScaling(int choice);
 extern void M_CrispyToggleSndChannels(int choice);
 extern void M_CrispyToggleSoundfixes(int choice);

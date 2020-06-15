@@ -86,7 +86,6 @@ int			screenblocks = 10; // [crispy] increased
 
 // temp for screenblocks (0-9)
 int			screenSize;
-int			screenSize_min;
 
 // -1 = no quicksave slot picked!
 int			quickSaveSlot;
@@ -161,7 +160,7 @@ typedef struct
     
     // hotkey in menu
     char	alphaKey;			
-    char	*alttext; // [crispy] alternative text for the Options menu
+    const char	*alttext; // [crispy] alternative text for menu items
 } menuitem_t;
 
 
@@ -175,6 +174,7 @@ typedef struct menu_s
     short		x;
     short		y;		// x,y of menu
     short		lastOn;		// last item user was on in menu
+    short		lumps_missing;	// [crispy] indicate missing menu graphics lumps
 } menu_t;
 
 short		itemOn;			// menu item skull is on
@@ -193,7 +193,6 @@ menu_t*	currentMenu;
 //
 static void M_NewGame(int choice);
 static void M_Episode(int choice);
-static void M_Expansion(int choice); // [crispy] NRFTL
 static void M_ChooseSkill(int choice);
 static void M_LoadGame(int choice);
 static void M_SaveGame(int choice);
@@ -211,7 +210,7 @@ static void M_MouseInvert(int choice); // [crispy] mouse sensitivity menu
 static void M_SfxVol(int choice);
 static void M_MusicVol(int choice);
 static void M_ChangeDetail(int choice);
-void M_SizeDisplay(int choice); // [crispy] un-static for R_ExecuteSetViewSize()
+static void M_SizeDisplay(int choice);
 static void M_Mouse(int choice); // [crispy] mouse sensitivity menu
 static void M_Sound(int choice);
 
@@ -322,32 +321,6 @@ menu_t  EpiDef =
 };
 
 //
-// EXPANSION SELECT
-//
-enum
-{
-    ex1,
-    ex2,
-    ex_end
-} expansions_e;
-
-static menuitem_t ExpansionMenu[]=
-{
-    {1,"M_EPI1", M_Expansion,'h'},
-    {1,"M_EPI2", M_Expansion,'n'},
-};
-
-static menu_t  ExpDef =
-{
-    ex_end,		// # of menu items
-    &MainDef,		// previous menu
-    ExpansionMenu,	// menuitem_t ->
-    M_DrawEpisode,	// drawing routine ->
-    48,63,              // x,y
-    ex1			// lastOn
-};
-
-//
 // NEW GAME
 //
 enum
@@ -362,11 +335,11 @@ enum
 
 menuitem_t NewGameMenu[]=
 {
-    {1,"M_JKILL",	M_ChooseSkill, 'i'},
-    {1,"M_ROUGH",	M_ChooseSkill, 'h'},
-    {1,"M_HURT",	M_ChooseSkill, 'h'},
-    {1,"M_ULTRA",	M_ChooseSkill, 'u'},
-    {1,"M_NMARE",	M_ChooseSkill, 'n'}
+    {1,"M_JKILL",	M_ChooseSkill, 'i', "I'm too young to die."},
+    {1,"M_ROUGH",	M_ChooseSkill, 'h', "Hey, not too rough!."},
+    {1,"M_HURT",	M_ChooseSkill, 'h', "Hurt me plenty."},
+    {1,"M_ULTRA",	M_ChooseSkill, 'u', "Ultra-Violence."},
+    {1,"M_NMARE",	M_ChooseSkill, 'n', "Nightmare!"}
 };
 
 menu_t  NewDef =
@@ -520,6 +493,7 @@ enum
 
     crispness_sep_navigational,
     crispness_extautomap,
+    crispness_smoothmap,
     crispness_automapstats,
     crispness_leveltime,
     crispness_playercoords,
@@ -541,6 +515,7 @@ static menuitem_t Crispness2Menu[]=
     {-1,"",0,'\0'},
     {-1,"",0,'\0'},
     {1,"",	M_CrispyToggleExtAutomap,'e'},
+    {1,"",	M_CrispyToggleSmoothMap,'m'},
     {1,"",	M_CrispyToggleAutomapstats,'s'},
     {1,"",	M_CrispyToggleLeveltime,'l'},
     {1,"",	M_CrispyTogglePlayerCoords,'p'},
@@ -628,6 +603,7 @@ enum
     crispness_demotimer,
     crispness_demotimerdir,
     crispness_demobar,
+    crispness_demousetimer,
     crispness_sep_demos_,
 
     crispness4_next,
@@ -648,6 +624,7 @@ static menuitem_t Crispness4Menu[]=
     {1,"",	M_CrispyToggleDemoTimer,'v'},
     {1,"",	M_CrispyToggleDemoTimerDir,'a'},
     {1,"",	M_CrispyToggleDemoBar,'w'},
+    {1,"",	M_CrispyToggleDemoUseTimer,'u'},
     {-1,"",0,'\0'},
     {1,"",	M_CrispnessNext,'n'},
     {1,"",	M_CrispnessPrev,'p'},
@@ -1291,10 +1268,7 @@ void M_NewGame(int choice)
 	
     // Chex Quest disabled the episode select screen, as did Doom II.
 
-    if (nervewadfile)
-	M_SetupNextMenu(&ExpDef);
-    else
-    if (gamemode == commercial || gameversion == exe_chex)
+    if ((gamemode == commercial && !crispy->havenerve && !crispy->havemaster) || gameversion == exe_chex) // [crispy] NRFTL / The Master Levels
 	M_SetupNextMenu(&NewDef);
     else
 	M_SetupNextMenu(&EpiDef);
@@ -1346,50 +1320,55 @@ void M_Episode(int choice)
     M_SetupNextMenu(&NewDef);
 }
 
-static void M_Expansion(int choice)
-{
-    epi = choice;
-    M_SetupNextMenu(&NewDef);
-}
 
 
 //
 // M_Options
 //
-// [crispy] no patches are drawn in the Options menu anymore
-/*
 static const char *detailNames[2] = {"M_GDHIGH","M_GDLOW"};
 static const char *msgNames[2] = {"M_MSGOFF","M_MSGON"};
-*/
 
 void M_DrawOptions(void)
 {
     V_DrawPatchDirect(108, 15, W_CacheLumpName(DEH_String("M_OPTTTL"),
                                                PU_CACHE));
 	
-// [crispy] no patches are drawn in the Options menu anymore
-/*
+    if (OptionsDef.lumps_missing == -1)
+    {
     V_DrawPatchDirect(OptionsDef.x + 175, OptionsDef.y + LINEHEIGHT * detail,
 		      W_CacheLumpName(DEH_String(detailNames[detailLevel]),
 			              PU_CACHE));
-*/
-
+    }
+    else
+    if (OptionsDef.lumps_missing > 0)
+    {
     M_WriteText(OptionsDef.x + M_StringWidth("Graphic Detail: "),
                 OptionsDef.y + LINEHEIGHT * detail + 8 - (M_StringHeight("HighLow")/2),
                 detailLevel ? "Low" : "High");
+    }
 
-// [crispy] no patches are drawn in the Options menu anymore
-/*
+    if (OptionsDef.lumps_missing == -1)
+    {
     V_DrawPatchDirect(OptionsDef.x + 120, OptionsDef.y + LINEHEIGHT * messages,
                       W_CacheLumpName(DEH_String(msgNames[showMessages]),
                                       PU_CACHE));
-*/
+    }
+    else
+    if (OptionsDef.lumps_missing > 0)
+    {
     M_WriteText(OptionsDef.x + M_StringWidth("Messages: "),
                 OptionsDef.y + LINEHEIGHT * messages + 8 - (M_StringHeight("OnOff")/2),
                 showMessages ? "On" : "Off");
+    }
 
-    M_DrawThermo(OptionsDef.x + screenSize_min * 8,OptionsDef.y+LINEHEIGHT*(scrnsize+1),
-		 9 + 3 - screenSize_min,screenSize - screenSize_min); // [crispy] Crispy HUD
+// [crispy] mouse sensitivity menu
+/*
+    M_DrawThermo(OptionsDef.x, OptionsDef.y + LINEHEIGHT * (mousesens + 1),
+		 10, mouseSensitivity);
+*/
+
+    M_DrawThermo(OptionsDef.x,OptionsDef.y+LINEHEIGHT*(scrnsize+1),
+		 9 + (crispy->widescreen ? 6 : 3),screenSize); // [crispy] Crispy HUD
 }
 
 // [crispy] mouse sensitivity menu
@@ -1454,21 +1433,21 @@ static void M_DrawCrispnessBackground(void)
 
 static char crispy_menu_text[48];
 
-static void M_DrawCrispnessHeader(char *item)
+static void M_DrawCrispnessHeader(const char *item)
 {
     M_snprintf(crispy_menu_text, sizeof(crispy_menu_text),
                "%s%s", crstr[CR_GOLD], item);
     M_WriteText(ORIGWIDTH/2 - M_StringWidth(item) / 2, 12, crispy_menu_text);
 }
 
-static void M_DrawCrispnessSeparator(int y, char *item)
+static void M_DrawCrispnessSeparator(int y, const char *item)
 {
     M_snprintf(crispy_menu_text, sizeof(crispy_menu_text),
                "%s%s", crstr[CR_GOLD], item);
     M_WriteText(currentMenu->x - 8, currentMenu->y + CRISPY_LINEHEIGHT * y, crispy_menu_text);
 }
 
-static void M_DrawCrispnessItem(int y, char *item, int feat, boolean cond)
+static void M_DrawCrispnessItem(int y, const char *item, int feat, boolean cond)
 {
     M_snprintf(crispy_menu_text, sizeof(crispy_menu_text),
                "%s%s: %s%s", cond ? crstr[CR_NONE] : crstr[CR_DARK], item,
@@ -1477,7 +1456,7 @@ static void M_DrawCrispnessItem(int y, char *item, int feat, boolean cond)
     M_WriteText(currentMenu->x, currentMenu->y + CRISPY_LINEHEIGHT * y, crispy_menu_text);
 }
 
-static void M_DrawCrispnessMultiItem(int y, char *item, multiitem_t *multiitem, int feat, boolean cond)
+static void M_DrawCrispnessMultiItem(int y, const char *item, multiitem_t *multiitem, int feat, boolean cond)
 {
     M_snprintf(crispy_menu_text, sizeof(crispy_menu_text),
                "%s%s: %s%s", cond ? crstr[CR_NONE] : crstr[CR_DARK], item,
@@ -1486,7 +1465,7 @@ static void M_DrawCrispnessMultiItem(int y, char *item, multiitem_t *multiitem, 
     M_WriteText(currentMenu->x, currentMenu->y + CRISPY_LINEHEIGHT * y, crispy_menu_text);
 }
 
-static void M_DrawCrispnessGoto(int y, char *item)
+static void M_DrawCrispnessGoto(int y, const char *item)
 {
     M_snprintf(crispy_menu_text, sizeof(crispy_menu_text),
                "%s%s", crstr[CR_GOLD], item);
@@ -1501,7 +1480,7 @@ static void M_DrawCrispness1(void)
 
     M_DrawCrispnessSeparator(crispness_sep_rendering, "Rendering");
     M_DrawCrispnessItem(crispness_hires, "High Resolution Rendering", crispy->hires, true);
-    M_DrawCrispnessItem(crispness_widescreen, "Widescreen Rendering", crispy->widescreen, true);
+    M_DrawCrispnessItem(crispness_widescreen, "Widescreen Rendering", crispy->widescreen, aspect_ratio_correct);
     M_DrawCrispnessItem(crispness_uncapped, "Uncapped Framerate", crispy->uncapped, true);
     M_DrawCrispnessItem(crispness_vsync, "Enable VSync", crispy->vsync, !force_software_renderer);
     M_DrawCrispnessItem(crispness_smoothscaling, "Smooth Pixel Scaling", crispy->smoothscaling, true);
@@ -1534,10 +1513,11 @@ static void M_DrawCrispness2(void)
 
     M_DrawCrispnessSeparator(crispness_sep_navigational, "Navigational");
     M_DrawCrispnessItem(crispness_extautomap, "Extended Automap colors", crispy->extautomap, true);
+    M_DrawCrispnessItem(crispness_smoothmap, "Smooth automap lines", crispy->smoothmap, true);
     M_DrawCrispnessMultiItem(crispness_automapstats, "Show Level Stats", multiitem_widgets, crispy->automapstats, true);
     M_DrawCrispnessMultiItem(crispness_leveltime, "Show Level Time", multiitem_widgets, crispy->leveltime, true);
     M_DrawCrispnessMultiItem(crispness_playercoords, "Show Player Coords", multiitem_widgets, crispy->playercoords, true);
-    M_DrawCrispnessMultiItem(crispness_secretmessage, "Show Revealed Secrets", multiitem_secretmessage, crispy->secretmessage, true);
+    M_DrawCrispnessMultiItem(crispness_secretmessage, "Report Revealed Secrets", multiitem_secretmessage, crispy->secretmessage, true);
 
     M_DrawCrispnessGoto(crispness2_next, "Next Page >");
     M_DrawCrispnessGoto(crispness2_prev, "< Prev Page");
@@ -1593,6 +1573,7 @@ static void M_DrawCrispness4(void)
     M_DrawCrispnessMultiItem(crispness_demotimer, "Show Demo Timer", multiitem_demotimer, crispy->demotimer, true);
     M_DrawCrispnessMultiItem(crispness_demotimerdir, "Playback Timer Direction", multiitem_demotimerdir, crispy->demotimerdir + 1, crispy->demotimer & DEMOTIMER_PLAYBACK);
     M_DrawCrispnessItem(crispness_demobar, "Show Demo Progress Bar", crispy->demobar, true);
+    M_DrawCrispnessItem(crispness_demousetimer, "\"Use\" Button Timer", crispy->btusetimer, true);
 
     M_DrawCrispnessGoto(crispness4_next, "First Page >");
     M_DrawCrispnessGoto(crispness4_prev, "< Prev Page");
@@ -1766,7 +1747,6 @@ void M_QuitResponse(int key)
 
     if (key != key_menu_confirm)
 	return;
-
     // [crispy] play quit sound only if the ENDOOM screen is also shown
     if (!netgame && show_endoom)
     {
@@ -1886,33 +1866,32 @@ void M_ChangeDetail(int choice)
 
 void M_SizeDisplay(int choice)
 {
-    // [crispy] initialize screenSize_min
-    screenSize_min = crispy->widescreen ? 8 : 0;
-
     switch(choice)
     {
       case 0:
-	if (screenSize > screenSize_min)
+	if (screenSize > 0)
 	{
 	    screenblocks--;
 	    screenSize--;
 	}
 	break;
       case 1:
-	if (screenSize < 8 + 3) // [crispy] Crispy HUD
+	if (screenSize < 8 + (crispy->widescreen ? 6 : 3)) // [crispy] Crispy HUD
 	{
 	    screenblocks++;
 	    screenSize++;
+	}
+	// [crispy] reset to fullscreen HUD
+	else
+	{
+	    screenblocks = 11;
+	    screenSize = 8;
 	}
 	break;
     }
 	
 
-    // [crispy] initialize screenSize_min
-    if (choice == 0 || choice == 1)
-    {
     R_SetViewSize (screenblocks, detailLevel);
-    }
 }
 
 
@@ -2124,29 +2103,24 @@ static int G_ReloadLevel(void)
 
 static int G_GotoNextLevel(void)
 {
-  static byte doom_next[5][9] = {
+  byte doom_next[5][9] = {
     {12, 13, 19, 15, 16, 17, 18, 21, 14},
     {22, 23, 24, 25, 29, 27, 28, 31, 26},
     {32, 33, 34, 35, 36, 39, 38, 41, 37},
     {42, 49, 44, 45, 46, 47, 48, 51, 43},
     {52, 53, 54, 55, 56, 59, 58, 11, 57},
   };
-  static byte doom2_next[33] = {
-    0, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+  byte doom2_next[33] = {
+     2,  3,  4,  5,  6,  7,  8,  9, 10, 11,
     12, 13, 14, 15, 31, 17, 18, 19, 20, 21,
     22, 23, 24, 25, 26, 27, 28, 29, 30, 1,
     32, 16, 3
   };
-  static byte nerve_next[9] = {
+  byte nerve_next[9] = {
     2, 3, 4, 9, 6, 7, 8, 1, 5
   };
 
   int changed = false;
-
-  // [crispy] process only once
-  if (!doom2_next[0])
-  {
-    doom2_next[0] = 2;
 
     if (gamemode == commercial)
     {
@@ -2161,6 +2135,7 @@ static int G_GotoNextLevel(void)
         doom2_next[30] = 16;
         doom2_next[20] = 1;
       }
+
       if (gamemission == pack_master)
       {
         doom2_next[1] = 3;
@@ -2185,7 +2160,6 @@ static int G_GotoNextLevel(void)
         doom_next[0][4] = 11;
       }
     }
-  }
 
   if (gamestate == GS_LEVEL)
   {
@@ -2982,11 +2956,25 @@ void M_Drawer (void)
     y = currentMenu->y;
     max = currentMenu->numitems;
 
+    // [crispy] check current menu for missing menu graphics lumps - only once
+    if (currentMenu->lumps_missing == 0)
+    {
+        for (i = 0; i < max; i++)
+            if (currentMenu->menuitems[i].name[0])
+                if (W_CheckNumForName(currentMenu->menuitems[i].name) < 0)
+                    currentMenu->lumps_missing++;
+
+        // [crispy] no lump missing, no need to check again
+        if (currentMenu->lumps_missing == 0)
+            currentMenu->lumps_missing = -1;
+    }
+
     for (i=0;i<max;i++)
     {
+        const char *alttext = currentMenu->menuitems[i].alttext;
         name = DEH_String(currentMenu->menuitems[i].name);
 
-	if (name[0]) // && W_CheckNumForName(name) > 0) // [crispy] moved...
+	if (name[0] && (W_CheckNumForName(name) > 0 || alttext))
 	{
 	    // [crispy] shade unavailable menu items
 	    if ((currentMenu == &MainDef && i == savegame && (!usergame || gamestate != GS_LEVEL)) ||
@@ -2995,15 +2983,10 @@ void M_Drawer (void)
 	        (currentMenu == &MainDef && i == newgame && (demorecording || (netgame && !demoplayback))))
 	        dp_translation = cr[CR_DARK];
 
-	    if (currentMenu == &OptionsDef)
-	    {
-		char *alttext = currentMenu->menuitems[i].alttext;
-
-		if (alttext)
-		    M_WriteText(x, y+8-(M_StringHeight(alttext)/2), alttext);
-	    }
-	    else if (W_CheckNumForName(name) > 0) // [crispy] ...here
+	    if (W_CheckNumForName(name) > 0 && currentMenu->lumps_missing == -1)
 	    V_DrawPatchDirect (x, y, W_CacheLumpName(name, PU_CACHE));
+	    else if (alttext)
+		M_WriteText(x, y+8-(M_StringHeight(alttext)/2), alttext);
 
 	    dp_translation = NULL;
 	}
@@ -3078,7 +3061,6 @@ void M_Init (void)
     whichSkull = 0;
     skullAnimCounter = 10;
     screenSize = screenblocks - 3;
-    M_SizeDisplay(-1); // [crispy] initialize screenSize_min
     messageToPrint = 0;
     messageString = NULL;
     messageLastMenuActive = menuactive;
@@ -3107,7 +3089,7 @@ void M_Init (void)
         MainMenu[readthis] = MainMenu[quitdoom];
         MainDef.numitems--;
         MainDef.y += 8;
-        NewDef.prevMenu = nervewadfile ? &ExpDef : &MainDef;
+        NewDef.prevMenu = &MainDef;
         ReadDef1.routine = M_DrawReadThisCommercial;
         ReadDef1.x = 330;
         ReadDef1.y = 165;
@@ -3134,6 +3116,46 @@ void M_Init (void)
         EpiDef.numitems = 1;
         // [crispy] never show the Episode menu
         NewDef.prevMenu = &MainDef;
+    }
+
+    // [crispy] NRFTL / The Master Levels
+    if (crispy->havenerve || crispy->havemaster)
+    {
+        int i;
+
+        NewDef.prevMenu = &EpiDef;
+        EpisodeMenu[0].alphaKey = 'h';
+        EpisodeMenu[0].alttext = "Hell on Earth";
+        EpiDef.numitems = 1;
+
+        if (crispy->havenerve)
+        {
+            EpisodeMenu[EpiDef.numitems].alphaKey = 'n';
+            EpisodeMenu[EpiDef.numitems].alttext = "No Rest for the Living";
+            EpiDef.numitems++;
+
+            // [crispy] render the episode menu with the HUD font
+            // if the graphics are not from the BFG Edition Doom 2 IWAD or from a PWAD
+            if (gamevariant != bfgedition &&
+                (i = W_CheckNumForName("M_EPI2")) != -1 && W_IsIWADLump(lumpinfo[i]))
+            {
+                EpiDef.lumps_missing = 1;
+            }
+        }
+
+        if (crispy->havemaster)
+        {
+            EpisodeMenu[EpiDef.numitems].alphaKey = 't';
+            EpisodeMenu[EpiDef.numitems].alttext = "The Master Levels";
+            EpiDef.numitems++;
+
+            // [crispy] render the episode menu with the HUD font
+            // if the graphics are not from a PWAD
+            if ((i = W_CheckNumForName("M_EPI1")) != -1 && W_IsIWADLump(lumpinfo[i]))
+            {
+                EpiDef.lumps_missing = 1;
+            }
+        }
     }
 
     // [crispy] rearrange Load Game and Save Game menus

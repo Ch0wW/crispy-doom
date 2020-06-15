@@ -183,7 +183,8 @@ typedef struct
 } intercept_t;
 
 #define	MAXINTERCEPTS	128
-extern intercept_t intercepts[MAXINTERCEPTS], *intercept_p;
+extern intercept_t *intercepts, *intercept_p; // [crispy] remove INTERCEPTS limit
+extern void check_intercept(void); // [crispy] remove INTERCEPTS limit
 typedef boolean(*traverser_t) (intercept_t * in);
 
 
@@ -253,6 +254,7 @@ extern int maxammo[NUMAMMO];
 extern int clipammo[NUMAMMO];
 
 void P_SetMessage(player_t * player, const char *message, boolean ultmsg);
+void P_SetCenterMessage(player_t * player, const char *message); // [crispy] Set centered message
 void P_TouchSpecialThing(mobj_t * special, mobj_t * toucher);
 void P_DamageMobj(mobj_t * target, mobj_t * inflictor, mobj_t * source,
                   int damage);
