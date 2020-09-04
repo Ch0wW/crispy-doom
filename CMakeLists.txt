@@ -1,7 +1,7 @@
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 cmake_minimum_required(VERSION 3.7.2)
-project("Crispy Doom" VERSION 5.8.0 LANGUAGES C)
+project("Crispy Doom" VERSION 5.9.1 LANGUAGES C)
 
 # Autotools variables
 set(top_srcdir ${CMAKE_CURRENT_SOURCE_DIR})
@@ -28,8 +28,8 @@ else()
                         "-Wredundant-decls")
 endif()
 
-find_package(SDL2 2.0.1)
-find_package(SDL2_mixer 2.0.0)
+find_package(SDL2 2.0.7)
+find_package(SDL2_mixer 2.0.2)
 find_package(SDL2_net 2.0.0)
 
 # Check for libsamplerate.

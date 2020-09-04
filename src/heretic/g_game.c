@@ -106,6 +106,9 @@ int consoleplayer;              // player taking events and displaying
 int displayplayer;              // view being displayed
 int levelstarttic;              // gametic at level start
 int totalkills, totalitems, totalsecret;        // for intermission
+int totalleveltimes; // [crispy] total time for all completed levels
+
+boolean finalintermission; // [crispy] track intermission at end of episode
 
 int mouseSensitivity;
 
@@ -1510,10 +1513,88 @@ void G_SecretExitLevel(void)
     gameaction = ga_completed;
 }
 
+// [crispy] format time for level statistics
+static void G_FormatLevelStatTime(char *str, int tics)
+{
+    int exitHours, exitMinutes;
+    float exitTime, exitSeconds;
+
+    exitTime = (float) tics / 35;
+    exitHours = exitTime / 3600;
+    exitTime -= exitHours * 3600;
+    exitMinutes = exitTime / 60;
+    exitTime -= exitMinutes * 60;
+    exitSeconds = exitTime;
+
+    if (exitHours)
+    {
+        M_snprintf(str, sizeof(str), "%d:%02d:%05.2f",
+                    exitHours, exitMinutes, exitSeconds);
+    }
+    else
+    {
+        M_snprintf(str, sizeof(str), "%01d:%05.2f", exitMinutes, exitSeconds);
+    }
+}
+
+// [crispy] Write level statistics upon exit
+static void G_WriteLevelStat(void)
+{
+    static FILE *fstream = NULL;
+
+    int i, playerKills = 0, playerItems = 0, playerSecrets = 0;
+
+    char levelTimeString[16];
+    char totalTimeString[16];
+    char *decimal;
+
+    if (fstream == NULL)
+    {
+        fstream = fopen("levelstat.txt", "w");
+
+        if (fstream == NULL)
+        {
+            fprintf(stderr, "Unable to open levelstat.txt for writing!\n");
+            return;
+        }
+    }
+
+    G_FormatLevelStatTime(levelTimeString, leveltime);
+    G_FormatLevelStatTime(totalTimeString, totalleveltimes + leveltime);
+
+    // Total time ignores centiseconds
+    decimal = strchr(totalTimeString, '.');
+    if (decimal != NULL)
+    {
+        *decimal = '\0';
+    }
+
+    for (i = 0; i < MAXPLAYERS; i++)
+    {
+        if (playeringame[i])
+        {
+            playerKills += players[i].killcount;
+            playerItems += players[i].itemcount;
+            playerSecrets += players[i].secretcount;
+        }
+    }
+
+    fprintf(fstream, "E%dM%d%s - %s (%s)  K: %d/%d  I: %d/%d  S: %d/%d\n",
+            gameepisode, gamemap, (secretexit ? "s" : ""),
+            levelTimeString, totalTimeString, playerKills, totalkills, 
+            playerItems, totalitems, playerSecrets, totalsecret);
+}
+
 void G_DoCompleted(void)
 {
     int i;
     static int afterSecret[5] = { 7, 5, 5, 5, 4 };
+
+    // [crispy] Write level statistics upon exit
+    if (M_ParmExists("-levelstat"))
+    {
+        G_WriteLevelStat();
+    }
 
     gameaction = ga_nothing;
 
@@ -1540,13 +1621,17 @@ void G_DoCompleted(void)
     }
     else if (gamemap == 8)
     {
-        gameaction = ga_victory;
-        return;
+        // [crispy] track intermission at end of episode
+        finalintermission = true;
     }
     else
     {
         gamemap++;
     }
+
+    // [crispy] total time for all completed levels (only count seconds)
+    totalleveltimes += (leveltime - leveltime % TICRATE);
+
     gamestate = GS_INTERMISSION;
     IN_Start();
 }
@@ -1560,6 +1645,12 @@ void G_DoCompleted(void)
 void G_WorldDone(void)
 {
     gameaction = ga_worlddone;
+
+    // [crispy] track intermission at end of episode
+    if (finalintermission)
+    {
+        gameaction = ga_victory;
+    }
 }
 
 //============================================================================
@@ -1743,6 +1834,12 @@ void G_InitNew(skill_t skill, int episode, int map)
     gameskill = skill;
     viewactive = true;
     BorderNeedRefresh = true;
+
+    // [crispy] total time for all completed levels
+    totalleveltimes = 0;
+
+    // [crispy] track intermission at end of episode
+    finalintermission = false;
 
     // Set the sky map
     if (episode > 5)

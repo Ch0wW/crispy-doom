@@ -1374,6 +1374,9 @@ void D_DoomMain (void)
     char demolumpname[9];
     int numiwadlumps;
 
+    // [crispy] unconditionally initialize DEH tables
+    DEH_Init();
+
     I_AtExit(D_Endoom, false);
 
     // print banner
@@ -1695,8 +1698,7 @@ void D_DoomMain (void)
         }
 
         // auto-loaded files per IWAD
-
-        autoload_dir = M_GetAutoloadDir(D_SaveGameIWADName(gamemission));
+        autoload_dir = M_GetAutoloadDir(D_SaveGameIWADName(gamemission, gamevariant));
         DEH_AutoLoadPatches(autoload_dir);
         W_AutoLoadWADs(autoload_dir);
         free(autoload_dir);
@@ -1897,7 +1899,7 @@ void D_DoomMain (void)
     // we've finished loading Dehacked patches.
     D_SetGameDescription();
 
-    savegamedir = M_GetSaveGameDir(D_SaveGameIWADName(gamemission));
+    savegamedir = M_GetSaveGameDir(D_SaveGameIWADName(gamemission, gamevariant));
 
     // Check for -file in shareware
     if (modifiedgame && (gamevariant != freedoom))

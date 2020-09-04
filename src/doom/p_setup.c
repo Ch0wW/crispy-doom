@@ -1304,36 +1304,6 @@ P_SetupLevel
 
 }
 
-// [crispy] height of the spawnstate's first sprite in pixels
-static void P_InitActualHeights (void)
-{
-	int i;
-
-	for (i = 0; i < NUMMOBJTYPES; i++)
-	{
-		state_t *state;
-		spritedef_t *sprdef;
-		spriteframe_t *sprframe;
-		int lump;
-		patch_t *patch;
-
-		state = &states[mobjinfo[i].spawnstate];
-		sprdef = &sprites[state->sprite];
-
-		if (!sprdef->numframes || !(mobjinfo[i].flags & (MF_SOLID|MF_SHOOTABLE)))
-		{
-			mobjinfo[i].actualheight = mobjinfo[i].height;
-			continue;
-		}
-
-		sprframe = &sprdef->spriteframes[state->frame & FF_FRAMEMASK];
-		lump = sprframe->lump[0];
-		patch = W_CacheLumpNum (lump + firstspritelump, PU_CACHE);
-
-		// [crispy] round to the next integer multiple of 8
-		mobjinfo[i].actualheight = ((patch->height + 7) & (~7)) << FRACBITS;
-	}
-}
 
 
 //
@@ -1344,7 +1314,6 @@ void P_Init (void)
     P_InitSwitchList ();
     P_InitPicAnims ();
     R_InitSprites (sprnames);
-    P_InitActualHeights();
 }
 
 

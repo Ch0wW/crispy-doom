@@ -72,6 +72,11 @@ static int hours;
 static int minutes;
 static int seconds;
 
+// [crispy] Show total time on intermission
+static int totalHours;
+static int totalMinutes;
+static int totalSeconds;
+
 static int slaughterboy;        // in DM, the player with the most kills
 
 static int killPercent[MAXPLAYERS];
@@ -229,6 +234,14 @@ void IN_InitStats(void)
         minutes = count / 60;
         count -= minutes * 60;
         seconds = count;
+
+        // [crispy] Show total time on intermission
+        count = totalleveltimes / 35;
+        totalHours = count / 3600;
+        count -= totalHours * 3600;
+        totalMinutes = count / 60;
+        count -= totalMinutes * 60;
+        totalSeconds = count;
     }
     else if (netgame && !deathmatch)
     {
@@ -408,6 +421,15 @@ void IN_Ticker(void)
     if (oldintertime < intertime)
     {
         interstate++;
+
+        // [crispy] skip "now entering" if it's the final intermission
+        if (interstate >= 1 && finalintermission)
+        {
+            IN_Stop();
+            G_WorldDone();
+            return;
+        }
+
         if (gameepisode > 3 && interstate >= 1)
         {                       // Extended Wad levels:  skip directly to the next level
             interstate = 3;
@@ -440,6 +462,13 @@ void IN_Ticker(void)
         {
             intertime = 150;
             skipintermission = false;
+            return;
+        }
+        // [crispy] skip "now entering" if it's the final intermission
+        else if (finalintermission)
+        {
+            IN_Stop();
+            G_WorldDone();
             return;
         }
         else if (interstate < 2 && gameepisode < 4)
@@ -764,16 +793,26 @@ void IN_DrawSingleStats(void)
         sounds++;
     }
 
-    if (gamemode != retail || gameepisode <= 3)
+    // [crispy] ignore "now entering" if it's the final intermission
+    if (gamemode != retail || gameepisode <= 3 || finalintermission)
     {
-        IN_DrTextB(DEH_String("TIME"), 85, 160);
-        IN_DrawTime(155, 160, hours, minutes, seconds);
+        IN_DrTextB(DEH_String("TIME"), 85, 150);
+        IN_DrawTime(155, 150, hours, minutes, seconds);
+
+        // [crispy] Show total time on intermission
+        IN_DrTextB(DEH_String("TOTAL"), 85, 170);
+        IN_DrawTime(155, 170, totalHours, totalMinutes, totalSeconds);
     }
     else
     {
         // [crispy] show the level time for Ep.4 and up
-        IN_DrTextB(DEH_String("TIME"), 85, 130);
-        IN_DrawTime(155, 130, hours, minutes, seconds);
+        IN_DrTextB(DEH_String("TIME"), 85, 120);
+        IN_DrawTime(155, 120, hours, minutes, seconds);
+
+        // [crispy] Show total time on intermission
+        IN_DrTextB(DEH_String("TOTAL"), 85, 140);
+        IN_DrawTime(155, 140, totalHours, totalMinutes, totalSeconds);
+
         x = 160 - MN_TextAWidth(DEH_String("NOW ENTERING:")) / 2;
         MN_DrTextA(DEH_String("NOW ENTERING:"), x, 160);
         x = 160 - MN_TextBWidth(next_level_name) / 2;
